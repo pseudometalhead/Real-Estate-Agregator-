@@ -70,6 +70,14 @@ builder.Services.AddHttpClient<ImobiliarioScraper>(client =>
     .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())
     .AddPolicyHandler(HttpClientPolicies.GetCircuitBreakerPolicy());
 
+builder.Services.AddHttpClient<CasaSapoScraper>(client =>
+    {
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        client.Timeout = TimeSpan.FromSeconds(30);
+    })
+    .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())
+    .AddPolicyHandler(HttpClientPolicies.GetCircuitBreakerPolicy());
+
 // AddHttpClient<TClient>() above already registers IdealistaScraper/etc. as
 // typed clients wired to their configured HttpClient. Registering
 // IPropertyScraper directly against the concrete type (AddScoped<IPropertyScraper,
@@ -79,6 +87,7 @@ builder.Services.AddHttpClient<ImobiliarioScraper>(client =>
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<IdealistaScraper>());
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<ImoVirtualScraper>());
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<ImobiliarioScraper>());
+builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<CasaSapoScraper>());
 
 builder.Services.AddScoped<DataNormalizationService>();
 builder.Services.AddScoped<DeduplicationService>();

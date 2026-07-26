@@ -95,6 +95,7 @@ public class ScraperService
         "Idealista" => settings.ScrapeIdealistaEnabled,
         "ImoVirtual" => settings.ScrapeImoVirtualEnabled,
         "Imobiliario" => settings.ScrapeImobiliarioEnabled,
+        "CasaSapo" => settings.ScrapeCasaSapoEnabled,
         _ => false
     };
 }

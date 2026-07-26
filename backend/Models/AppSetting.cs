@@ -13,6 +13,7 @@ public class AppSetting
     public bool ScrapeIdealistaEnabled { get; set; } = true;
     public bool ScrapeImoVirtualEnabled { get; set; } = true;
     public bool ScrapeImobiliarioEnabled { get; set; } = true;
+    public bool ScrapeCasaSapoEnabled { get; set; } = true;
 
     public string LogFilePath { get; set; } = "/app/logs/estate-aggregator.log";
 

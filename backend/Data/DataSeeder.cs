@@ -30,6 +30,7 @@ public static class DataSeeder
             ScrapeIdealistaEnabled = true,
             ScrapeImoVirtualEnabled = true,
             ScrapeImobiliarioEnabled = true,
+            ScrapeCasaSapoEnabled = true,
             UpdatedAt = DateTime.UtcNow
         });
 
@@ -155,7 +156,7 @@ public static class DataSeeder
         // -24h, which would be excluded depending on the few seconds/minutes
         // that pass between seeding and the report being requested).
         var recentRunTime = DateTime.UtcNow.AddHours(-2);
-        var sources = new[] { "Idealista", "ImoVirtual", "Imobiliario" };
+        var sources = new[] { "Idealista", "ImoVirtual", "Imobiliario", "CasaSapo" };
 
         foreach (var source in sources)
         {

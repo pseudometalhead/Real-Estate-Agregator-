@@ -10,6 +10,7 @@ public class AppSettingDto
     public bool ScrapeIdealistaEnabled { get; set; }
     public bool ScrapeImoVirtualEnabled { get; set; }
     public bool ScrapeImobiliarioEnabled { get; set; }
+    public bool ScrapeCasaSapoEnabled { get; set; }
     public DateTime? LastScrapedAt { get; set; }
 }
 
@@ -23,4 +24,5 @@ public class UpdateAppSettingDto
     public bool ScrapeIdealistaEnabled { get; set; } = true;
     public bool ScrapeImoVirtualEnabled { get; set; } = true;
     public bool ScrapeImobiliarioEnabled { get; set; } = true;
+    public bool ScrapeCasaSapoEnabled { get; set; } = true;
 }
