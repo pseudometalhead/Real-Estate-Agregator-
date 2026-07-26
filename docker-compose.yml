@@ -1,0 +1,49 @@
+services:
+  frontend:
+    container_name: estate-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=${VITE_API_URL}
+    networks:
+      - estate-net
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./frontend/src:/app/src
+    command: npm run dev -- --host
+
+  backend:
+    container_name: estate-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - DATABASE_PATH=${DATABASE_PATH}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - SCRAPER_MORNING_CRON=${SCRAPER_MORNING_CRON}
+      - SCRAPER_EVENING_CRON=${SCRAPER_EVENING_CRON}
+    networks:
+      - estate-net
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+networks:
+  estate-net:
+    driver: bridge

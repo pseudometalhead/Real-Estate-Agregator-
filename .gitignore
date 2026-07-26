@@ -1,0 +1,22 @@
+# .NET
+backend/bin/
+backend/obj/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Runtime data
+data/
+logs/
+backend/data/
+backend/Logs/
+
+# Env
+.env.local
+frontend/.env.local
+
+# Editor/OS
+.vs/
+.vscode/
+.DS_Store
