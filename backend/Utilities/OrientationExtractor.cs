@@ -1,34 +1,38 @@
+using System.Text.RegularExpressions;
+
 namespace EstateAggregator.Utilities;
 
 public static class OrientationExtractor
 {
-    private static readonly string[] SulKeywords = { "fachada sul", "frente sul", " sul ", " a sul" };
-    private static readonly string[] NorteKeywords = { "fachada norte", "frente norte", " norte ", "virada a norte" };
-    private static readonly string[] OrienteKeywords = { "nascente", "oriente", " este ", " leste " };
-    private static readonly string[] PoenteKeywords = { "poente", " oeste " };
+    // Word-boundary regexes so a trailing comma/period ("virado a norte,")
+    // still matches — a naive " norte " space-padded Contains() check does
+    // not, since punctuation immediately follows the word instead of a space.
+    private static readonly Regex SulPattern = new(
+        @"fachada sul|frente sul|virad[oa] a sul|\bsul\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex NortePattern = new(
+        @"fachada norte|frente norte|virad[oa] a norte|\bnorte\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex OrientePattern = new(
+        @"nascente|oriente|virad[oa] a (nascente|este|leste)|\beste\b|\bleste\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex PoentePattern = new(
+        @"poente|virad[oa] a (poente|oeste)|\boeste\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static (string SunOrientation, string OrientationSource) Extract(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))
             return ("Not Available", "not_available");
 
-        var padded = " " + description.ToLowerInvariant() + " ";
-
-        if (ContainsAny(padded, SulKeywords))
+        if (SulPattern.IsMatch(description))
             return ("Sul", "extracted");
 
-        if (ContainsAny(padded, NorteKeywords))
+        if (NortePattern.IsMatch(description))
             return ("Norte", "extracted");
 
-        if (ContainsAny(padded, OrienteKeywords))
+        if (OrientePattern.IsMatch(description))
             return ("Oriente", "extracted");
 
-        if (ContainsAny(padded, PoenteKeywords))
+        if (PoentePattern.IsMatch(description))
             return ("Poente", "extracted");
 
         return ("Not Available", "not_available");
     }
-
-    private static bool ContainsAny(string text, string[] keywords)
-        => keywords.Any(text.Contains);
 }
