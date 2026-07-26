@@ -73,6 +73,8 @@ builder.Services.AddHttpClient<ImobiliarioScraper>(client =>
 builder.Services.AddHttpClient<CasaSapoScraper>(client =>
     {
         client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        client.DefaultRequestHeaders.Add("Accept-Language", "pt-PT,pt;q=0.9,en;q=0.8");
         client.Timeout = TimeSpan.FromSeconds(30);
     })
     .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())
