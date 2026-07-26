@@ -5,23 +5,35 @@ namespace EstateAggregator.DTOs;
 
 public static class MappingExtensions
 {
-    public static PropertyDto ToDto(this Property p) => new()
+    public static PropertyDto ToDto(this Property p)
     {
-        Id = p.Id,
-        Url = p.Url,
-        Source = p.Source,
-        Price = p.Price,
-        Location = p.LocationString,
-        Beds = p.Beds,
-        Baths = p.Baths,
-        SizeM2 = p.SizeM2,
-        Description = p.Description,
-        SunOrientation = p.SunOrientation,
-        OrientationSource = p.OrientationSource,
-        Photos = DeserializeStringList(p.PhotosJson),
-        CreatedAt = p.CreatedAt,
-        LastSeenAt = p.LastSeenAt
-    };
+        var history = p.PriceHistory
+            .OrderBy(h => h.ChangedAt)
+            .Select(h => new PriceHistoryPointDto { OldPrice = h.OldPrice, NewPrice = h.NewPrice, ChangedAt = h.ChangedAt })
+            .ToList();
+        var latest = history.LastOrDefault();
+
+        return new PropertyDto
+        {
+            Id = p.Id,
+            Url = p.Url,
+            Source = p.Source,
+            Price = p.Price,
+            Location = p.LocationString,
+            Beds = p.Beds,
+            Baths = p.Baths,
+            SizeM2 = p.SizeM2,
+            Description = p.Description,
+            SunOrientation = p.SunOrientation,
+            OrientationSource = p.OrientationSource,
+            Photos = DeserializeStringList(p.PhotosJson),
+            CreatedAt = p.CreatedAt,
+            LastSeenAt = p.LastSeenAt,
+            PreviousPrice = latest?.OldPrice,
+            PriceChangedAt = latest?.ChangedAt,
+            PriceHistory = history
+        };
+    }
 
     public static MyListingDto ToDto(this MyListing l) => new()
     {

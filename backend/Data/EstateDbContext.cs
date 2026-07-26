@@ -13,6 +13,7 @@ public class EstateDbContext : DbContext
     public DbSet<MyListing> MyListings => Set<MyListing>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<ScraperRun> ScraperRuns => Set<ScraperRun>();
+    public DbSet<PriceHistoryEntry> PriceHistoryEntries => Set<PriceHistoryEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,18 @@ public class EstateDbContext : DbContext
         {
             entity.HasIndex(r => r.Source);
             entity.HasIndex(r => r.RunStartTime);
+        });
+
+        modelBuilder.Entity<PriceHistoryEntry>(entity =>
+        {
+            entity.HasIndex(e => e.PropertyId);
+            entity.Property(e => e.OldPrice).HasColumnType("decimal(10,2)");
+            entity.Property(e => e.NewPrice).HasColumnType("decimal(10,2)");
+
+            entity.HasOne(e => e.Property)
+                .WithMany(p => p.PriceHistory)
+                .HasForeignKey(e => e.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<AppSetting>(entity =>

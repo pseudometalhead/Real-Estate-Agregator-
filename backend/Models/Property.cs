@@ -26,4 +26,5 @@ public class Property
     public DateTime? FirstScrapedAt { get; set; }
 
     public MyListing? MyListing { get; set; }
+    public ICollection<PriceHistoryEntry> PriceHistory { get; set; } = new List<PriceHistoryEntry>();
 }

@@ -42,6 +42,17 @@ public class DeduplicationService
         var existingByUrl = await db.Properties.FirstOrDefaultAsync(p => p.Url == candidate.Url);
         if (existingByUrl != null)
         {
+            if (existingByUrl.Price.HasValue && candidate.Price.HasValue && existingByUrl.Price != candidate.Price)
+            {
+                db.PriceHistoryEntries.Add(new PriceHistoryEntry
+                {
+                    PropertyId = existingByUrl.Id,
+                    OldPrice = existingByUrl.Price.Value,
+                    NewPrice = candidate.Price.Value,
+                    ChangedAt = DateTime.UtcNow
+                });
+            }
+
             existingByUrl.Price = candidate.Price;
             existingByUrl.LocationString = candidate.LocationString;
             existingByUrl.Beds = candidate.Beds;

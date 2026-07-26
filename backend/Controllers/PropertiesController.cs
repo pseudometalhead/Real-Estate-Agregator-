@@ -40,8 +40,17 @@ public class PropertiesController : ControllerBase
             query = query.Where(p => p.LocationString != null && p.LocationString.Contains(filter.Location));
 
         var total = await query.CountAsync();
+
+        var sortDescending = !string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
+        query = filter.SortBy?.ToLowerInvariant() switch
+        {
+            "price" => sortDescending ? query.OrderByDescending(p => p.Price) : query.OrderBy(p => p.Price),
+            "size" => sortDescending ? query.OrderByDescending(p => p.SizeM2) : query.OrderBy(p => p.SizeM2),
+            _ => query.OrderByDescending(p => p.LastSeenAt)
+        };
+
         var properties = await query
-            .OrderByDescending(p => p.LastSeenAt)
+            .Include(p => p.PriceHistory)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
@@ -58,7 +67,10 @@ public class PropertiesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<PropertyDto>> GetProperty(int id)
     {
-        var property = await _db.Properties.FindAsync(id);
+        var property = await _db.Properties
+            .Include(p => p.PriceHistory)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
         if (property == null)
             return NotFound();
 
