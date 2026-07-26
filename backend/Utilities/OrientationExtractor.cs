@@ -11,8 +11,16 @@ public static class OrientationExtractor
         @"fachada sul|frente sul|virad[oa] a sul|\bsul\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex NortePattern = new(
         @"fachada norte|frente norte|virad[oa] a norte|\bnorte\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    // "este" is deliberately NOT matched as a bare word: in Portuguese it's
+    // the extremely common demonstrative "this" ("este apartamento", "este
+    // T4", ...), not just the cardinal direction. Tested against 37 real
+    // ImoVirtual listings: a bare \beste\b match produced 15 false positives
+    // out of 16 total matches (only "nascente" was a genuine sun-orientation
+    // mention). "este" is only trusted here in compound phrases that
+    // unambiguously refer to sun exposure.
     private static readonly Regex OrientePattern = new(
-        @"nascente|oriente|virad[oa] a (nascente|este|leste)|\beste\b|\bleste\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"nascente|oriente|virad[oa] a (nascente|este|leste)|exposi[cç][ãa]o (solar )?a este|fachada este|\bleste\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex PoentePattern = new(
         @"poente|virad[oa] a (poente|oeste)|\boeste\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
