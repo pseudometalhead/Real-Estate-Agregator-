@@ -2,6 +2,25 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { myListingsApi } from '../api/myListingsApi';
 import { ContactPanel } from '../components/ContactPanel';
 import { getPlatformMeta, getFaviconUrl } from '../utils/platformMeta';
+import { toCsv, downloadCsv } from '../utils/csv';
+
+const csvColumns = [
+  { header: 'Status', get: (l) => l.status },
+  { header: 'Price', get: (l) => l.property?.price },
+  { header: 'Location', get: (l) => l.property?.location },
+  { header: 'Beds', get: (l) => l.property?.beds },
+  { header: 'Size (m2)', get: (l) => l.property?.sizeM2 },
+  { header: 'Sun Orientation', get: (l) => l.property?.sunOrientation },
+  { header: 'Source', get: (l) => l.property?.source },
+  { header: 'Agent Name', get: (l) => l.agentName },
+  { header: 'Agent Phone', get: (l) => l.agentPhone },
+  { header: 'Agent Email', get: (l) => l.agentEmail },
+  { header: 'Notes', get: (l) => l.notes },
+  { header: 'Date Added', get: (l) => new Date(l.dateAdded).toLocaleDateString() },
+  { header: 'Contacts Logged', get: (l) => l.commHistoryCount },
+  { header: 'Last Contacted', get: (l) => (l.lastContactedAt ? new Date(l.lastContactedAt).toLocaleDateString() : '') },
+  { header: 'URL', get: (l) => l.property?.url },
+];
 
 const statuses = ['Interested', 'Contacted', 'Waiting', 'Rejected'];
 
@@ -61,9 +80,24 @@ export function MyListingsPage() {
     }
   };
 
+  const handleExportCsv = () => {
+    const csv = toCsv(listings, csvColumns);
+    const suffix = statusFilter ? `-${statusFilter.toLowerCase()}` : '';
+    downloadCsv(`my-properties${suffix}-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">My Properties</h1>
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <h1 className="text-3xl font-bold">My Properties</h1>
+        <button
+          onClick={handleExportCsv}
+          disabled={listings.length === 0}
+          className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm disabled:opacity-50"
+        >
+          ⬇ Export CSV
+        </button>
+      </div>
 
       <div className="flex gap-2 mb-6 flex-wrap">
         <button

@@ -41,11 +41,18 @@ public class PropertiesController : ControllerBase
 
         var total = await query.CountAsync();
 
+        // SQLite's EF Core provider refuses to ORDER BY a `decimal` column
+        // server-side (throws NotSupportedException) — Price/SizeM2 are
+        // cast to double first, which SQLite can sort natively.
         var sortDescending = !string.Equals(filter.SortDir, "asc", StringComparison.OrdinalIgnoreCase);
         query = filter.SortBy?.ToLowerInvariant() switch
         {
-            "price" => sortDescending ? query.OrderByDescending(p => p.Price) : query.OrderBy(p => p.Price),
-            "size" => sortDescending ? query.OrderByDescending(p => p.SizeM2) : query.OrderBy(p => p.SizeM2),
+            "price" => sortDescending
+                ? query.OrderByDescending(p => (double?)p.Price)
+                : query.OrderBy(p => (double?)p.Price),
+            "size" => sortDescending
+                ? query.OrderByDescending(p => (double?)p.SizeM2)
+                : query.OrderBy(p => (double?)p.SizeM2),
             _ => query.OrderByDescending(p => p.LastSeenAt)
         };
 

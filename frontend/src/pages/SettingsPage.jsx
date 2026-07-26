@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { appSettingsApi } from '../api/appSettingsApi';
 
 const sources = [
-  { key: 'scrapeIdealistaEnabled', label: 'Idealista' },
-  { key: 'scrapeImoVirtualEnabled', label: 'ImoVirtual' },
-  { key: 'scrapeImobiliarioEnabled', label: 'Imobiliário' },
+  { key: 'scrapeIdealistaEnabled', label: 'Idealista', working: false },
+  { key: 'scrapeImoVirtualEnabled', label: 'ImoVirtual', working: true },
+  { key: 'scrapeImobiliarioEnabled', label: 'Imobiliário', working: false },
+  { key: 'scrapeCasaSapoEnabled', label: 'Casa SAPO', working: true },
 ];
 
 export function SettingsPage() {
@@ -139,11 +140,17 @@ export function SettingsPage() {
                   onChange={(e) => setSettings({ ...settings, [source.key]: e.target.checked })}
                 />
                 {source.label}
+                {!source.working && (
+                  <span className="text-xs text-gray-400" title="Integration not available for this source">
+                    (not available)
+                  </span>
+                )}
               </label>
             ))}
           </div>
           <p className="text-sm text-gray-600 mt-1">
-            Note: real scraping is not yet implemented for any source (see Reports page).
+            ImoVirtual and Casa SAPO run real scrapes. Idealista is blocked by bot protection
+            and Imobiliário.pt is a parked domain — see the Reports page for details.
           </p>
         </div>
 
