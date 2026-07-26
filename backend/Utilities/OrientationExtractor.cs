@@ -7,10 +7,18 @@ public static class OrientationExtractor
     // Word-boundary regexes so a trailing comma/period ("virado a norte,")
     // still matches — a naive " norte " space-padded Contains() check does
     // not, since punctuation immediately follows the word instead of a space.
+    //
+    // Bare \bsul\b / \bnorte\b are deliberately NOT matched: verified against
+    // 334 real ImoVirtual listings, both showed up in place/brand names
+    // unrelated to sun orientation — "Norte Shopping" (a mall) and
+    // "Matosinhos Sul" (a neighborhood) both got misclassified. "sul"/"norte"
+    // are only trusted in phrases that unambiguously mean sun exposure.
     private static readonly Regex SulPattern = new(
-        @"fachada sul|frente sul|virad[oa] a sul|\bsul\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"fachada sul|frente sul|virad[oa] a sul|volt(ado|ada) a sul|\ba sul\b|exposi[cç][ãa]o (solar )?a sul",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex NortePattern = new(
-        @"fachada norte|frente norte|virad[oa] a norte|\bnorte\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"fachada norte|frente norte|virad[oa] a norte|volt(ado|ada) a norte|\ba norte\b|exposi[cç][ãa]o (solar )?a norte",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
     // "este" is deliberately NOT matched as a bare word: in Portuguese it's
     // the extremely common demonstrative "this" ("este apartamento", "este
     // T4", ...), not just the cardinal direction. Tested against 37 real

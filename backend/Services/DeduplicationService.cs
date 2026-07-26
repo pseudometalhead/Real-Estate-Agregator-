@@ -20,12 +20,25 @@ public class DeduplicationService
         => DedupHashGenerator.Compute(locationString, price, beds);
 
     // Applies the three-way dedup rule described in the MVP spec:
+    // 0. Already added-but-unsaved earlier in this same scrape run (e.g. a
+    //    sponsored listing repeated within one page of real results) ->
+    //    Skipped. Checked against the change tracker, not the database,
+    //    since a plain query wouldn't see not-yet-saved pending inserts —
+    //    without this, two same-run duplicates both get INSERTed and violate
+    //    the Url unique constraint.
     // 1. Exact URL match -> refresh LastSeenAt / fields on the existing row (Updated).
     // 2. No URL match but the dedup hash matches a row seen within the last 30 days
     //    -> treat as the same property re-listed on another portal (Skipped).
     // 3. Otherwise -> insert as a new property (Added).
     public async Task<DedupOutcome> ProcessAsync(EstateDbContext db, Property candidate)
     {
+        var alreadyPendingInThisBatch = db.ChangeTracker.Entries<Property>()
+            .Any(e => e.State == EntityState.Added &&
+                      (e.Entity.Url == candidate.Url || e.Entity.DedupHash == candidate.DedupHash));
+
+        if (alreadyPendingInThisBatch)
+            return DedupOutcome.Skipped;
+
         var existingByUrl = await db.Properties.FirstOrDefaultAsync(p => p.Url == candidate.Url);
         if (existingByUrl != null)
         {
