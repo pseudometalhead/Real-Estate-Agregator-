@@ -6,6 +6,8 @@ const PLATFORMS = {
   ImoVirtual: { domain: 'imovirtual.com', label: 'ImoVirtual', color: 'bg-blue-100 text-blue-800' },
   Imobiliario: { domain: 'imobiliario.pt', label: 'Imobiliário', color: 'bg-gray-100 text-gray-800' },
   CasaSapo: { domain: 'casa.sapo.pt', label: 'Casa SAPO', color: 'bg-orange-100 text-orange-800' },
+  CaixaImobiliario: { domain: 'caixaimobiliario.pt', label: 'Caixa Imobiliário', color: 'bg-teal-100 text-teal-800' },
+  Santander: { domain: 'santander.pt', label: 'Santander', color: 'bg-red-100 text-red-800' },
 };
 
 const DEFAULT_PLATFORM = { domain: null, label: 'Unknown', color: 'bg-gray-100 text-gray-800' };

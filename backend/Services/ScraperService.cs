@@ -110,6 +110,8 @@ public class ScraperService
         "ImoVirtual" => settings.ScrapeImoVirtualEnabled,
         "Imobiliario" => settings.ScrapeImobiliarioEnabled,
         "CasaSapo" => settings.ScrapeCasaSapoEnabled,
+        "CaixaImobiliario" => settings.ScrapeCaixaImobiliarioEnabled,
+        "Santander" => settings.ScrapeSantanderEnabled,
         _ => false
     };
 }

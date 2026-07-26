@@ -80,6 +80,26 @@ builder.Services.AddHttpClient<CasaSapoScraper>(client =>
     .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())
     .AddPolicyHandler(HttpClientPolicies.GetCircuitBreakerPolicy());
 
+builder.Services.AddHttpClient<CaixaImobiliarioScraper>(client =>
+    {
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        client.DefaultRequestHeaders.Add("Accept-Language", "pt-PT,pt;q=0.9,en;q=0.8");
+        client.Timeout = TimeSpan.FromSeconds(30);
+    })
+    .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())
+    .AddPolicyHandler(HttpClientPolicies.GetCircuitBreakerPolicy());
+
+builder.Services.AddHttpClient<SantanderScraper>(client =>
+    {
+        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        client.DefaultRequestHeaders.Add("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        client.DefaultRequestHeaders.Add("Accept-Language", "pt-PT,pt;q=0.9,en;q=0.8");
+        client.Timeout = TimeSpan.FromSeconds(30);
+    })
+    .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())
+    .AddPolicyHandler(HttpClientPolicies.GetCircuitBreakerPolicy());
+
 // AddHttpClient<TClient>() above already registers IdealistaScraper/etc. as
 // typed clients wired to their configured HttpClient. Registering
 // IPropertyScraper directly against the concrete type (AddScoped<IPropertyScraper,
@@ -90,6 +110,8 @@ builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<Idealis
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<ImoVirtualScraper>());
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<ImobiliarioScraper>());
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<CasaSapoScraper>());
+builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<CaixaImobiliarioScraper>());
+builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<SantanderScraper>());
 
 // Nominatim's usage policy requires a real identifying User-Agent (not a
 // spoofed browser string) for automated queries.

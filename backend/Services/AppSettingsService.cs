@@ -35,6 +35,8 @@ public class AppSettingsService
         settings.ScrapeImoVirtualEnabled = dto.ScrapeImoVirtualEnabled;
         settings.ScrapeImobiliarioEnabled = dto.ScrapeImobiliarioEnabled;
         settings.ScrapeCasaSapoEnabled = dto.ScrapeCasaSapoEnabled;
+        settings.ScrapeCaixaImobiliarioEnabled = dto.ScrapeCaixaImobiliarioEnabled;
+        settings.ScrapeSantanderEnabled = dto.ScrapeSantanderEnabled;
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

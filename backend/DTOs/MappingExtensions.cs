@@ -77,6 +77,8 @@ public static class MappingExtensions
         ScrapeImoVirtualEnabled = s.ScrapeImoVirtualEnabled,
         ScrapeImobiliarioEnabled = s.ScrapeImobiliarioEnabled,
         ScrapeCasaSapoEnabled = s.ScrapeCasaSapoEnabled,
+        ScrapeCaixaImobiliarioEnabled = s.ScrapeCaixaImobiliarioEnabled,
+        ScrapeSantanderEnabled = s.ScrapeSantanderEnabled,
         LastScrapedAt = s.LastScrapedAt
     };
 

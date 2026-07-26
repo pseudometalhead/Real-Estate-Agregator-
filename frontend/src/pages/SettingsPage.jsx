@@ -6,6 +6,8 @@ const sources = [
   { key: 'scrapeImoVirtualEnabled', label: 'ImoVirtual', working: true },
   { key: 'scrapeImobiliarioEnabled', label: 'Imobiliário', working: false },
   { key: 'scrapeCasaSapoEnabled', label: 'Casa SAPO', working: true },
+  { key: 'scrapeCaixaImobiliarioEnabled', label: 'Caixa Imobiliário (CGD)', working: true },
+  { key: 'scrapeSantanderEnabled', label: 'Santander', working: true },
 ];
 
 export function SettingsPage() {
@@ -149,8 +151,9 @@ export function SettingsPage() {
             ))}
           </div>
           <p className="text-sm text-gray-600 mt-1">
-            ImoVirtual and Casa SAPO run real scrapes. Idealista is blocked by bot protection
-            and Imobiliário.pt is a parked domain — see the Reports page for details.
+            ImoVirtual, Casa SAPO, Caixa Imobiliário and Santander (the latter two are bank-owned
+            property portals) run real scrapes. Idealista is blocked by bot protection and
+            Imobiliário.pt is a parked domain — see the Reports page for details.
           </p>
         </div>
 
