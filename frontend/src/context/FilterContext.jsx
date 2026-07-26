@@ -8,6 +8,8 @@ const defaultFilters = {
   beds: null,
   orientation: null,
   location: '',
+  sortBy: 'date',
+  sortDir: 'desc',
   page: 1,
 };
 

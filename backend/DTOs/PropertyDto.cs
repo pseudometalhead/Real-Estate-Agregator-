@@ -7,6 +7,8 @@ public class PropertyDto
     public string Source { get; set; } = string.Empty;
     public decimal? Price { get; set; }
     public string? Location { get; set; }
+    public double? Lat { get; set; }
+    public double? Lng { get; set; }
     public int? Beds { get; set; }
     public int? Baths { get; set; }
     public decimal? SizeM2 { get; set; }

@@ -10,12 +10,15 @@ public class ScraperService
 {
     private readonly IEnumerable<IPropertyScraper> _scrapers;
     private readonly EstateDbContext _db;
+    private readonly GeocodingService _geocodingService;
     private readonly ILogger<ScraperService> _logger;
 
-    public ScraperService(IEnumerable<IPropertyScraper> scrapers, EstateDbContext db, ILogger<ScraperService> logger)
+    public ScraperService(
+        IEnumerable<IPropertyScraper> scrapers, EstateDbContext db, GeocodingService geocodingService, ILogger<ScraperService> logger)
     {
         _scrapers = scrapers;
         _db = db;
+        _geocodingService = geocodingService;
         _logger = logger;
     }
 
@@ -83,6 +86,17 @@ public class ScraperService
         aggregate.EndTime = DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await _geocodingService.GeocodeMissingAsync(_db, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Geocoding is a nice-to-have for the map view — a failure here
+            // shouldn't mark the whole scrape run as failed.
+            _logger.LogWarning(ex, "Geocoding pass failed");
+        }
 
         _logger.LogInformation("Scraper run completed: {Found} found, {Added} added",
             aggregate.PropertiesFound, aggregate.PropertiesAdded);

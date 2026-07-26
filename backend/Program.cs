@@ -91,6 +91,14 @@ builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<ImoVirt
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<ImobiliarioScraper>());
 builder.Services.AddScoped<IPropertyScraper>(sp => sp.GetRequiredService<CasaSapoScraper>());
 
+// Nominatim's usage policy requires a real identifying User-Agent (not a
+// spoofed browser string) for automated queries.
+builder.Services.AddHttpClient<GeocodingService>(client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "EstateAggregator/1.0 (personal real estate search tool)");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+
 builder.Services.AddScoped<DataNormalizationService>();
 builder.Services.AddScoped<DeduplicationService>();
 builder.Services.AddScoped<AppSettingsService>();

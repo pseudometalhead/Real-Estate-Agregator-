@@ -20,6 +20,8 @@ public static class MappingExtensions
             Source = p.Source,
             Price = p.Price,
             Location = p.LocationString,
+            Lat = p.Lat,
+            Lng = p.Lng,
             Beds = p.Beds,
             Baths = p.Baths,
             SizeM2 = p.SizeM2,
