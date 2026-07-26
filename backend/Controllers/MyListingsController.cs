@@ -26,7 +26,7 @@ public class MyListingsController : ControllerBase
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 20 : pageSize;
 
-        var query = _db.MyListings.Include(ml => ml.Property).AsQueryable();
+        var query = _db.MyListings.Include(ml => ml.Property).Include(ml => ml.CommHistory).AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(ml => ml.Status == status);
@@ -50,7 +50,10 @@ public class MyListingsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<MyListingDto>> GetMyListing(int id)
     {
-        var listing = await _db.MyListings.Include(ml => ml.Property).FirstOrDefaultAsync(ml => ml.Id == id);
+        var listing = await _db.MyListings
+            .Include(ml => ml.Property)
+            .Include(ml => ml.CommHistory)
+            .FirstOrDefaultAsync(ml => ml.Id == id);
         if (listing == null)
             return NotFound();
 

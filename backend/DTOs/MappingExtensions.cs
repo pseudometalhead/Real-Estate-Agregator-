@@ -50,7 +50,20 @@ public static class MappingExtensions
         AskedAboutOrientation = l.AskedAboutOrientation,
         FollowUpDate = l.FollowUpDate,
         DateAdded = l.DateAdded,
-        LastUpdated = l.LastUpdated
+        LastUpdated = l.LastUpdated,
+        CommHistoryCount = l.CommHistory.Count,
+        LastContactedAt = l.CommHistory.Count > 0 ? l.CommHistory.Max(c => c.CreatedAt) : null
+    };
+
+    public static CommHistoryEntryDto ToDto(this CommHistoryEntry c) => new()
+    {
+        Id = c.Id,
+        MyListingId = c.MyListingId,
+        Channel = c.Channel,
+        Direction = c.Direction,
+        Subject = c.Subject,
+        Message = c.Message,
+        CreatedAt = c.CreatedAt
     };
 
     public static AppSettingDto ToDto(this AppSetting s) => new()

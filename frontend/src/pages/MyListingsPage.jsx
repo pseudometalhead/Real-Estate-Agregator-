@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { myListingsApi } from '../api/myListingsApi';
+import { ContactPanel } from '../components/ContactPanel';
+import { getPlatformMeta, getFaviconUrl } from '../utils/platformMeta';
 
 const statuses = ['Interested', 'Contacted', 'Waiting', 'Rejected'];
 
@@ -8,6 +10,7 @@ export function MyListingsPage() {
   const [statusFilter, setStatusFilter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [contactingListing, setContactingListing] = useState(null);
 
   const fetchListings = useCallback(async () => {
     setLoading(true);
@@ -90,71 +93,118 @@ export function MyListingsPage() {
         <div className="text-center py-12 text-gray-600">No listings found.</div>
       ) : (
         <div className="space-y-4">
-          {listings.map((listing) => (
-            <div key={listing.id} className="bg-white rounded-lg shadow p-6 border border-gray-200">
-              <div className="flex justify-between items-start mb-4 gap-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-lg">
-                    €{listing.property?.price?.toLocaleString()}
-                  </h3>
-                  <p className="text-gray-600">{listing.property?.location}</p>
-                  <p className="text-sm text-gray-500">
-                    Added: {new Date(listing.dateAdded).toLocaleDateString()}
-                  </p>
-                </div>
-                <select
-                  value={listing.status}
-                  onChange={(e) => handleStatusChange(listing, e.target.value)}
-                  className="px-3 py-2 border rounded bg-white"
-                >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          {listings.map((listing) => {
+            const platform = getPlatformMeta(listing.property?.source);
+            const faviconUrl = getFaviconUrl(listing.property?.source);
+            const photo = listing.property?.photos?.[0];
 
-              {listing.notes && (
-                <div className="mb-4 p-3 bg-gray-50 rounded">
-                  <p className="text-sm">
-                    <strong>Notes:</strong> {listing.notes}
-                  </p>
+            return (
+              <div key={listing.id} className="bg-white rounded-lg shadow p-6 border border-gray-200">
+                <div className="flex justify-between items-start mb-4 gap-4">
+                  <div className="flex gap-4 flex-1 min-w-0">
+                    {photo && (
+                      <img
+                        src={photo}
+                        alt=""
+                        loading="lazy"
+                        onError={(e) => (e.target.style.display = 'none')}
+                        className="w-20 h-20 rounded object-cover bg-gray-100 shrink-0"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-lg">
+                          €{listing.property?.price?.toLocaleString()}
+                        </h3>
+                        <span
+                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${platform.color}`}
+                        >
+                          {faviconUrl && <img src={faviconUrl} alt="" width={12} height={12} />}
+                          {platform.label}
+                        </span>
+                      </div>
+                      <p className="text-gray-600">{listing.property?.location}</p>
+                      <p className="text-sm text-gray-500">
+                        Added: {new Date(listing.dateAdded).toLocaleDateString()}
+                      </p>
+                      {listing.commHistoryCount > 0 && (
+                        <p className="text-xs text-gray-500">
+                          {listing.commHistoryCount} contact
+                          {listing.commHistoryCount === 1 ? '' : 's'} logged
+                          {listing.lastContactedAt &&
+                            ` · last ${new Date(listing.lastContactedAt).toLocaleDateString()}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <select
+                    value={listing.status}
+                    onChange={(e) => handleStatusChange(listing, e.target.value)}
+                    className="px-3 py-2 border rounded bg-white"
+                  >
+                    {statuses.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
 
-              {listing.agentName && (
-                <div className="text-sm text-gray-600 mb-4">
-                  <p>
-                    <strong>Agent:</strong> {listing.agentName}
-                  </p>
-                  {listing.agentPhone && (
-                    <p>
-                      <strong>Phone:</strong> {listing.agentPhone}
+                {listing.notes && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded">
+                    <p className="text-sm">
+                      <strong>Notes:</strong> {listing.notes}
                     </p>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
-              <div className="flex gap-2">
-                <a
-                  href={listing.property?.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
-                >
-                  View on Site
-                </a>
-                <button
-                  onClick={() => handleDelete(listing.id)}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-                >
-                  Delete
-                </button>
+                {listing.agentName && (
+                  <div className="text-sm text-gray-600 mb-4">
+                    <p>
+                      <strong>Agent:</strong> {listing.agentName}
+                    </p>
+                    {listing.agentPhone && (
+                      <p>
+                        <strong>Phone:</strong> {listing.agentPhone}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2 flex-wrap">
+                  <a
+                    href={listing.property?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                  >
+                    View on Site
+                  </a>
+                  <button
+                    onClick={() => setContactingListing(listing)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                  >
+                    Contact Agent
+                  </button>
+                  <button
+                    onClick={() => handleDelete(listing.id)}
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {contactingListing && (
+        <ContactPanel
+          listing={contactingListing}
+          onClose={() => setContactingListing(null)}
+          onLogged={fetchListings}
+        />
       )}
     </div>
   );

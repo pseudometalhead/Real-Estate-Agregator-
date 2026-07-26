@@ -14,6 +14,7 @@ public class EstateDbContext : DbContext
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<ScraperRun> ScraperRuns => Set<ScraperRun>();
     public DbSet<PriceHistoryEntry> PriceHistoryEntries => Set<PriceHistoryEntry>();
+    public DbSet<CommHistoryEntry> CommHistoryEntries => Set<CommHistoryEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,17 @@ public class EstateDbContext : DbContext
             entity.HasOne(e => e.Property)
                 .WithMany(p => p.PriceHistory)
                 .HasForeignKey(e => e.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CommHistoryEntry>(entity =>
+        {
+            entity.HasIndex(e => e.MyListingId);
+            entity.HasIndex(e => e.CreatedAt);
+
+            entity.HasOne(e => e.MyListing)
+                .WithMany(l => l.CommHistory)
+                .HasForeignKey(e => e.MyListingId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

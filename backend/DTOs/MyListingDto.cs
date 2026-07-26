@@ -18,6 +18,11 @@ public class MyListingDto
 
     public DateTime DateAdded { get; set; }
     public DateTime LastUpdated { get; set; }
+
+    // Full comm history is fetched on-demand via CommHistoryController; this
+    // is just a lightweight summary so the listing view doesn't need it.
+    public int CommHistoryCount { get; set; }
+    public DateTime? LastContactedAt { get; set; }
 }
 
 public class CreateMyListingDto

@@ -18,4 +18,6 @@ public class MyListing
 
     public DateTime DateAdded { get; set; } = DateTime.UtcNow;
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+
+    public ICollection<CommHistoryEntry> CommHistory { get; set; } = new List<CommHistoryEntry>();
 }
