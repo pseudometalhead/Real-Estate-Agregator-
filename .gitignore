@@ -1,6 +1,6 @@
 # .NET
-backend/bin/
-backend/obj/
+**/bin/
+**/obj/
 
 # Node
 frontend/node_modules/
