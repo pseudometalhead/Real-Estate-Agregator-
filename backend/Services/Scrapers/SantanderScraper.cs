@@ -203,6 +203,15 @@ public class SantanderScraper : IPropertyScraper
         var constructionStatus = ConstructionStatusExtractor.Extract(fullDescription);
         var elevator = ElevatorExtractor.Extract(fullDescription);
         var parking = ParkingExtractor.Extract(fullDescription);
+        var furnished = FurnishedExtractor.Extract(fullDescription);
+        var airConditioning = AirConditioningExtractor.Extract(fullDescription);
+        var balcony = BalconyExtractor.Extract(fullDescription);
+        var renovated = RenovatedExtractor.Extract(fullDescription);
+        var storage = StorageExtractor.Extract(fullDescription);
+        var waterView = WaterViewExtractor.Extract(fullDescription);
+        var nearMetro = NearMetroExtractor.Extract(fullDescription);
+        var hasUsageLicense = UsageLicenseExtractor.Extract(fullDescription);
+        var energyRating = EnergyRatingExtractor.Extract(fullDescription);
 
         return new Property
         {
@@ -210,19 +219,30 @@ public class SantanderScraper : IPropertyScraper
             Source = Source,
             Price = price,
             LocationString = location,
+            Distrito = titleFirst.Length > 0 ? titleFirst : null,
+            Concelho = titleSecond.Length > 0 ? titleSecond : null,
             Beds = beds,
             Baths = baths,
             SizeM2 = size,
-            Description = fullDescription,
+            Description = DescriptionCleaner.Clean(fullDescription),
             SunOrientation = orientation,
             OrientationSource = orientationSource,
             OpenPlanKitchen = openPlanKitchen,
             ConstructionStatus = constructionStatus,
             Elevator = elevator,
             Parking = parking,
+            Furnished = furnished,
+            AirConditioning = airConditioning,
+            Balcony = balcony,
+            Renovated = renovated,
+            Storage = storage,
+            WaterView = waterView,
+            NearMetro = nearMetro,
+            HasUsageLicense = hasUsageLicense,
+            EnergyRating = energyRating,
             PhotosJson = JsonSerializer.Serialize(photoUrl != null ? new[] { photoUrl } : Array.Empty<string>()),
             SourcePropertyId = ExtractRef(typeTag),
-            DedupHash = DedupHashGenerator.Compute(location, price ?? 0, beds)
+            DedupHash = DedupHashGenerator.Compute(location, price ?? 0, beds, size)
         };
     }
 

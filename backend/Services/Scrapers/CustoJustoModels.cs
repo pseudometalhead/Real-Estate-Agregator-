@@ -66,3 +66,53 @@ internal class CustoJustoParams
     // CasaSapoScraper already uses.
     public string? Size { get; set; }
 }
+
+// The individual listing page's own __NEXT_DATA__ blob — a different shape
+// from the search-results page above (props.pageProps.adData, not
+// props.pageProps.listItems). Verified live against
+// https://www.custojusto.pt/porto/imobiliario/apartamentos/apartamento-t3-...:
+// the search page's own "body" field is a short (~150-char) preview that
+// cuts off mid-sentence — the individual page's adData.body carries the
+// complete text (1900+ chars on the verified listing) — same class of
+// truncation ImoVirtualScraper already works around via its own detail-page
+// fetch. Bonus found free in the same JSON: adData.location (exact lat/lon,
+// no geocoding needed) and adData.params.energyrating.name (structured, more
+// reliable than regex-matching EnergyRatingExtractor over free text).
+internal class CustoJustoDetailNextData
+{
+    public CustoJustoDetailProps? Props { get; set; }
+}
+
+internal class CustoJustoDetailProps
+{
+    public CustoJustoDetailPageProps? PageProps { get; set; }
+}
+
+internal class CustoJustoDetailPageProps
+{
+    public CustoJustoAdData? AdData { get; set; }
+}
+
+internal class CustoJustoAdData
+{
+    public string? Body { get; set; }
+    public CustoJustoAdLocation? Location { get; set; }
+    public CustoJustoAdParams? Params { get; set; }
+}
+
+internal class CustoJustoAdLocation
+{
+    public double? Lat { get; set; }
+    public double? Lon { get; set; }
+}
+
+internal class CustoJustoAdParams
+{
+    public CustoJustoEnergyRating? EnergyRating { get; set; }
+}
+
+internal class CustoJustoEnergyRating
+{
+    // e.g. "C" — already the short display form, no parsing needed.
+    public string? Name { get; set; }
+}

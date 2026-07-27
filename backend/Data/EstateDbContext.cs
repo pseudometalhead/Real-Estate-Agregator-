@@ -31,6 +31,7 @@ public class EstateDbContext : DbContext
 
             entity.Property(p => p.Price).HasColumnType("decimal(10,2)");
             entity.Property(p => p.SizeM2).HasColumnType("decimal(8,2)");
+            entity.Property(p => p.CondoFeeMonthly).HasColumnType("decimal(8,2)");
         });
 
         modelBuilder.Entity<MyListing>(entity =>

@@ -63,4 +63,25 @@ public class ConstructionStatusExtractorTests
     {
         Assert.Equal("Not Available", ConstructionStatusExtractor.Extract("Apartamento T2 com cozinha equipada e garagem."));
     }
+
+    [Theory]
+    [InlineData("Apartamento T2, pronto a habitar.")]
+    [InlineData("Moradia pronta para habitar, sem necessidade de obras.")]
+    [InlineData("Construção concluída, chaves na mão.")]
+    [InlineData("Obra concluída em 2019.")]
+    [InlineData("Imóvel concluído, disponível para visitas.")]
+    public void Extract_ConcluidaPhrases_ReturnsConcluida(string description)
+    {
+        Assert.Equal("Concluída", ConstructionStatusExtractor.Extract(description));
+    }
+
+    [Fact]
+    public void Extract_NovaConstrucaoTakesPrecedenceOverConcluida()
+    {
+        // A newly-built, move-in-ready unit is more specifically "Nova
+        // Construção" than the generic "Concluída" — NovaConstrucaoPattern
+        // is checked first, so it should win.
+        var description = "Apartamento de nova construção, pronto a habitar.";
+        Assert.Equal("Nova Construção", ConstructionStatusExtractor.Extract(description));
+    }
 }

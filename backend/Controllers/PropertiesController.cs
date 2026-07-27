@@ -81,7 +81,17 @@ public class PropertiesController : ControllerBase
         }
 
         if (filter.PendingActionOnly == true)
-            query = query.Where(p => p.MyListing == null);
+        {
+            // A "Rejected" (swiped-left) decision isn't permanent the way
+            // "Interested" is — it re-surfaces in Discover 72h after it was
+            // made, so a snap decision made on a bad photo or a distracted
+            // thumb isn't final forever. See MyListingsController.AddToMyListings
+            // for the matching write-side logic that lets this same property
+            // be swiped again once that window has passed.
+            var rejectionCutoff = DateTime.UtcNow.AddHours(-72);
+            query = query.Where(p => p.MyListing == null
+                || (p.MyListing.Status == "Rejected" && p.MyListing.DateAdded < rejectionCutoff));
+        }
 
         if (!string.IsNullOrEmpty(filter.Location))
             query = query.Where(p => p.LocationString != null && p.LocationString.Contains(filter.Location));
@@ -136,6 +146,22 @@ public class PropertiesController : ControllerBase
         return Ok(property.ToDto());
     }
 
+    // Removes a property outright — for listings outside the districts the
+    // app actually cares about (e.g. a scrape that predates AppSettings
+    // being scoped down to Porto) rather than the usual Reject/MyListing
+    // path, which only records a decision and leaves the property in place.
+    [HttpDelete("{id}")]
+    public async Task<ActionResult> DeleteProperty(int id)
+    {
+        var property = await _db.Properties.FindAsync(id);
+        if (property == null)
+            return NotFound();
+
+        _db.Properties.Remove(property);
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
     // Manual entry point for sources with no live scraper (currently just
     // Idealista — see docs/idealista-integration-plan.md). Runs the same
     // orientation/open-plan-kitchen extraction and dedup pipeline every
@@ -172,7 +198,7 @@ public class PropertiesController : ControllerBase
             Elevator = elevator,
             Parking = parking,
             PhotosJson = System.Text.Json.JsonSerializer.Serialize(dto.Photos ?? new List<string>()),
-            DedupHash = DedupHashGenerator.Compute(dto.LocationString, dto.Price ?? 0, dto.Beds)
+            DedupHash = DedupHashGenerator.Compute(dto.LocationString, dto.Price ?? 0, dto.Beds, dto.SizeM2)
         };
 
         var outcome = await _dedupService.ProcessAsync(_db, candidate);

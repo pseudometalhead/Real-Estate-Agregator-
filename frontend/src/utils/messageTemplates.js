@@ -15,13 +15,16 @@ export function draftInquiry(listing, { availabilityText, senderName } = {}) {
   const price = property?.price ? `€${property.price.toLocaleString()}` : '';
   const agentName = listing.agentName?.trim();
   const url = property?.url?.trim();
+  const externalId = property?.externalId?.trim();
 
   const greeting = agentName ? `Olá ${agentName},` : 'Olá,';
-  // The link matters here beyond just courtesy: an agency agent often has
-  // dozens of active listings, so naming the exact property (not just
-  // "the apartment in Porto") is what lets them actually identify which one
-  // without a back-and-forth.
-  const linkLine = url ? `\n\nAnúncio: ${url}` : '';
+  // The link and reference matter here beyond just courtesy: an agency
+  // agent often has dozens of active listings, so naming the exact property
+  // (not just "the apartment in Porto") is what lets them actually identify
+  // which one without a back-and-forth — the reference is the same ID the
+  // site itself uses for this listing, so it's something the agent can
+  // search their own system for even without opening the link.
+  const linkLine = url ? `\n\nAnúncio: ${url}${externalId ? ` (Ref. ${externalId})` : ''}` : '';
   const intro =
     `${greeting}\n\n` +
     `Tenho interesse no imóvel em ${location}${price ? ` (${price})` : ''} e gostaria de saber mais detalhes.${linkLine}`;

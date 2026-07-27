@@ -43,4 +43,8 @@ public class PlatformSyncStatusDto
     public DateTime? LastSyncedAt { get; set; }
     // From that last run — meaningless (always false) when LastSyncedAt is null.
     public bool HasErrors { get; set; }
+    // The actual error message(s) from that last run, e.g. "Not configured —
+    // set IDEALISTA_RAPIDAPI_KEY..." or "Porto: HTTP 429" — empty unless
+    // HasErrors is true.
+    public List<string> LastErrors { get; set; } = new();
 }

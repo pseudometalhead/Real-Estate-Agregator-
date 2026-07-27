@@ -6,6 +6,7 @@ using EstateAggregator.DTOs;
 using EstateAggregator.Models;
 using EstateAggregator.Utilities;
 using HtmlAgilityPack;
+using Microsoft.EntityFrameworkCore;
 
 namespace EstateAggregator.Services.Scrapers;
 
@@ -61,6 +62,12 @@ public class ImobiliarioScraper : IPropertyScraper
 
     private static readonly Regex NextDataRegex = new(
         "<script id=\"__NEXT_DATA__\"[^>]*>(.*?)</script>", RegexOptions.Singleline | RegexOptions.Compiled);
+
+    // Search-result "Body" is a short (~150-char) preview that cuts off
+    // mid-sentence — see CustoJustoDetailNextData's comment. A description
+    // under this length is assumed truncated and worth the extra detail-page
+    // request; the real full bodies seen live all ran past 1000 chars.
+    private const int ShortDescriptionThreshold = 300;
 
     private static readonly Regex RoomsRegex = new(@"[Tt](\d+)", RegexOptions.Compiled);
     private static readonly Regex SizeRegex = new(@"(\d+(?:[.,]\d+)?)\s*m", RegexOptions.Compiled);
@@ -187,6 +194,12 @@ public class ImobiliarioScraper : IPropertyScraper
             var saleItems = newItems.Where(i => i.Type == "sell").ToList();
             report.PropertiesFound += saleItems.Count;
 
+            var pageUrls = saleItems.Select(i => ResolveUrl(i.Url, i.ListID)).ToList();
+            var existingByUrl = await _db.Properties
+                .Where(p => pageUrls.Contains(p.Url))
+                .Select(p => new { p.Url, p.Description, p.Lat, p.Lng, p.EnergyRating })
+                .ToDictionaryAsync(p => p.Url, cancellationToken);
+
             foreach (var item in saleItems)
             {
                 var property = MapToProperty(item, district);
@@ -196,6 +209,57 @@ public class ImobiliarioScraper : IPropertyScraper
 
                 if (property.Beds.HasValue && (property.Beds < settings.RoomsMin || property.Beds > settings.RoomsMax))
                     continue;
+
+                // The search-result "Body" this run's `property` was just
+                // built from is ALWAYS a short preview (see
+                // CustoJustoDetailNextData's comment) — every single scrape,
+                // not just the first — so "is it short" has to be judged
+                // from what's already stored, never from this run's own
+                // candidate. The detail page costs an extra request, so it's
+                // only fetched when there's something real left to gain:
+                // nothing stored yet, the stored description still looks
+                // truncated, or lat/lon was never backfilled. Once a listing
+                // has a full description and exact coordinates, later
+                // re-scrapes skip the extra request entirely.
+                existingByUrl.TryGetValue(property.Url, out var existing);
+                var needsDetail = existing == null
+                    || existing.Lat == null
+                    || (existing.Description?.Length ?? 0) < ShortDescriptionThreshold;
+
+                CustoJustoDetailResult? detail = null;
+                if (needsDetail)
+                {
+                    if (_hasMadeFirstRequest)
+                        await Task.Delay(DelayBetweenRequests, cancellationToken);
+                    _hasMadeFirstRequest = true;
+
+                    detail = await FetchDetailAsync(property.Url, cancellationToken);
+                }
+
+                // Precedence: this run's freshly-fetched detail page beats
+                // whatever was already stored, which in turn beats this
+                // run's own short search-preview candidate — otherwise a
+                // listing that already has the full text/coordinates would
+                // regress back to the short preview on every later re-scrape
+                // (needsDetail is false for it, so `detail` stays null here).
+                property.Description = !string.IsNullOrEmpty(detail?.Description)
+                    ? DescriptionCleaner.Clean(detail!.Description)
+                    : existing?.Description ?? property.Description;
+
+                if (detail?.Lat != null && detail.Lon != null)
+                {
+                    property.Lat = detail.Lat;
+                    property.Lng = detail.Lon;
+                }
+                else if (existing?.Lat != null)
+                {
+                    property.Lat = existing.Lat;
+                    property.Lng = existing.Lng;
+                }
+
+                property.EnergyRating = !string.IsNullOrEmpty(detail?.EnergyRating)
+                    ? detail!.EnergyRating
+                    : existing?.EnergyRating ?? property.EnergyRating;
 
                 var outcome = await _dedupService.ProcessAsync(_db, property);
                 switch (outcome)
@@ -229,11 +293,58 @@ public class ImobiliarioScraper : IPropertyScraper
         return JsonSerializer.Deserialize<CustoJustoNextData>(match.Groups[1].Value, JsonOptions);
     }
 
+    // Fetches the listing's own page for its full (non-truncated)
+    // description plus the bonus exact lat/lon and structured energy rating
+    // — see CustoJustoDetailNextData's comment for what was verified live.
+    // Fails closed (all-null result) on any HTTP/parse error, same as
+    // ImoVirtualScraper.FetchDetailAsync, since missing detail shouldn't
+    // abort an otherwise-successful scrape of everything else on the page.
+    private async Task<CustoJustoDetailResult> FetchDetailAsync(string url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync(url, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("CustoJusto detail page returned {Status} for {Url}", response.StatusCode, url);
+                return new CustoJustoDetailResult(null, null, null, null);
+            }
+
+            var html = await response.Content.ReadAsStringAsync(cancellationToken);
+            var match = NextDataRegex.Match(html);
+            if (!match.Success)
+                return new CustoJustoDetailResult(null, null, null, null);
+
+            var data = JsonSerializer.Deserialize<CustoJustoDetailNextData>(match.Groups[1].Value, JsonOptions);
+            var adData = data?.Props?.PageProps?.AdData;
+            var description = string.IsNullOrEmpty(adData?.Body)
+                ? null
+                : HtmlEntity.DeEntitize(adData.Body);
+
+            return new CustoJustoDetailResult(
+                description,
+                adData?.Location?.Lat,
+                adData?.Location?.Lon,
+                adData?.Params?.EnergyRating?.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "CustoJusto detail lookup failed for {Url}", url);
+            return new CustoJustoDetailResult(null, null, null, null);
+        }
+    }
+
+    private record CustoJustoDetailResult(string? Description, double? Lat, double? Lon, string? EnergyRating);
+
     private Property MapToProperty(CustoJustoListItem item, string fallbackDistrict)
     {
         var district = item.LocationNames?.District ?? fallbackDistrict;
         var neighborhood = item.LocationNames?.Parish ?? item.LocationNames?.County;
         var locationString = string.IsNullOrEmpty(neighborhood) ? district : $"{district}, {neighborhood}";
+        // CustoJusto's own LocationNames already distinguishes all three
+        // administrative levels natively, unlike every other source here.
+        var concelho = item.LocationNames?.County;
+        var freguesia = item.LocationNames?.Parish;
 
         var description = HtmlEntity.DeEntitize(item.Body ?? string.Empty) ?? string.Empty;
         var (orientation, orientationSource) = OrientationExtractor.Extract(description);
@@ -241,6 +352,15 @@ public class ImobiliarioScraper : IPropertyScraper
         var constructionStatus = ConstructionStatusExtractor.Extract(description);
         var elevator = ElevatorExtractor.Extract(description);
         var parking = ParkingExtractor.Extract(description);
+        var furnished = FurnishedExtractor.Extract(description);
+        var airConditioning = AirConditioningExtractor.Extract(description);
+        var balcony = BalconyExtractor.Extract(description);
+        var renovated = RenovatedExtractor.Extract(description);
+        var storage = StorageExtractor.Extract(description);
+        var waterView = WaterViewExtractor.Extract(description);
+        var nearMetro = NearMetroExtractor.Extract(description);
+        var hasUsageLicense = UsageLicenseExtractor.Extract(description);
+        var energyRating = EnergyRatingExtractor.Extract(description);
         var beds = ParseRooms(item.Params?.Rooms);
         var size = ParseSize(item.Params?.Size);
         var price = item.Price;
@@ -254,19 +374,31 @@ public class ImobiliarioScraper : IPropertyScraper
             Source = Source,
             Price = price,
             LocationString = locationString,
+            Distrito = district,
+            Concelho = concelho,
+            Freguesia = freguesia,
             Beds = beds,
             Baths = null,
             SizeM2 = size,
-            Description = description,
+            Description = DescriptionCleaner.Clean(description),
             SunOrientation = orientation,
             OrientationSource = orientationSource,
             OpenPlanKitchen = openPlanKitchen,
             ConstructionStatus = constructionStatus,
             Elevator = elevator,
             Parking = parking,
+            Furnished = furnished,
+            AirConditioning = airConditioning,
+            Balcony = balcony,
+            Renovated = renovated,
+            Storage = storage,
+            WaterView = waterView,
+            NearMetro = nearMetro,
+            HasUsageLicense = hasUsageLicense,
+            EnergyRating = energyRating,
             PhotosJson = JsonSerializer.Serialize(photos),
             SourcePropertyId = item.ListID,
-            DedupHash = DedupHashGenerator.Compute(locationString, price ?? 0, beds),
+            DedupHash = DedupHashGenerator.Compute(locationString, price ?? 0, beds, size),
             // See CustoJustoListItem.Name's comment — free at search level,
             // but the phone is gated behind a client-side reveal action this
             // scraper doesn't replicate, so AgentPhone stays unset.

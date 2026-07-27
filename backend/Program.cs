@@ -131,6 +131,8 @@ builder.Services.AddScoped<DeduplicationService>();
 builder.Services.AddScoped<AppSettingsService>();
 builder.Services.AddScoped<ScraperService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<AiEnrichmentService>();
+builder.Services.AddScoped<ExtractorReprocessingService>();
 
 // --- Quartz scheduling ---
 var morningCron = Environment.GetEnvironmentVariable("SCRAPER_MORNING_CRON")
@@ -166,12 +168,15 @@ builder.Services.AddHealthChecks();
 // --- CORS ---
 // The frontend (port 3000) and backend (port 5000) run on different
 // origins; the spec never mentions CORS but the frontend can't call the
-// API without it.
-var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000";
+// API without it. Comma-separated so a temporary tunnel origin (e.g. for
+// letting someone outside this machine test the app) can be added
+// alongside the normal localhost one instead of replacing it.
+var allowedOrigins = (builder.Configuration["Cors:AllowedOrigin"] ?? "http://localhost:3000")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.WithOrigins(allowedOrigin).AllowAnyHeader().AllowAnyMethod());
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod());
 });
 
 var app = builder.Build();

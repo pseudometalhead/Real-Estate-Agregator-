@@ -7,6 +7,7 @@ import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import { formatLocation } from '../utils/formatLocation';
 
 // Leaflet's default marker icon paths break under bundlers like Vite because
 // they reference relative asset URLs that don't survive bundling. Resetting
@@ -33,7 +34,13 @@ function averageCenter(properties) {
 // Pins are geocoded via the backend's Nominatim integration (see
 // GeocodingService), so properties only appear here once a scraper run has
 // resolved their location string to coordinates.
-export function Map({ properties = [] }) {
+//
+// A pin's popup navigates to the same /property/:id detail page a grid card
+// does (via onSelectProperty, wired up by the caller) — it deliberately does
+// NOT link straight out to the external listing site. The detail page's own
+// "View on Site" button still gets you there in one more tap when you
+// actually want it.
+export function Map({ properties = [], onSelectProperty }) {
   const geocoded = properties.filter((p) => p.lat != null && p.lng != null);
   const center = averageCenter(geocoded);
   const zoom = geocoded.length > 0 ? 11 : 7;
@@ -51,10 +58,14 @@ export function Map({ properties = [] }) {
               <Popup>
                 <div className="text-sm">
                   <p className="font-semibold">€{p.price?.toLocaleString()}</p>
-                  <p>{p.location}</p>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
-                    View listing
-                  </a>
+                  <p className="mb-1">{formatLocation(p)}</p>
+                  <button
+                    type="button"
+                    onClick={() => onSelectProperty?.(p)}
+                    className="text-blue-600 underline"
+                  >
+                    View details
+                  </button>
                 </div>
               </Popup>
             </Marker>

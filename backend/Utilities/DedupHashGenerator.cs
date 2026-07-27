@@ -12,11 +12,24 @@ public static class DedupHashGenerator
     // cross-portal duplicate, instead of being treated as two properties.
     private const decimal PriceBucketSize = 2500m;
 
-    public static string Compute(string? locationString, decimal price, int? beds)
+    // Found live: location+price+beds alone is too coarse for new
+    // developments, where a builder lists many genuinely distinct units at
+    // the same starting price in the same building (e.g. "Monte da Virgem
+    // Flats desde 262.500" — five different T2s, same price, same
+    // neighborhood). Without size in the hash these all collided into one
+    // "property" with the other four silently merged in as if they were
+    // re-listings of the same unit, hiding four real, available apartments.
+    // Size is bucketed to the nearest whole m² — tight enough to tell
+    // distinct units apart, loose enough to absorb rounding differences
+    // between portals (e.g. 66 vs 66.4).
+    private const decimal SizeBucketSize = 1m;
+
+    public static string Compute(string? locationString, decimal price, int? beds, decimal? sizeM2 = null)
     {
         var normalizedLocation = NormalizeLocation(locationString);
         var bucketedPrice = Math.Round(price / PriceBucketSize) * PriceBucketSize;
-        var hashInput = $"{normalizedLocation}|{bucketedPrice:F0}|{beds ?? 0}";
+        var bucketedSize = sizeM2.HasValue ? Math.Round(sizeM2.Value / SizeBucketSize) * SizeBucketSize : (decimal?)null;
+        var hashInput = $"{normalizedLocation}|{bucketedPrice:F0}|{beds ?? 0}|{(bucketedSize.HasValue ? bucketedSize.Value.ToString("F0") : "?")}";
         return ComputeSha256(hashInput)[..16];
     }
 

@@ -233,6 +233,17 @@ public class CasaSapoScraper : IPropertyScraper
         var constructionStatus = ConstructionStatusExtractor.Extract(description);
         var elevator = ElevatorExtractor.Extract(description);
         var parking = ParkingExtractor.Extract(description);
+        var furnished = FurnishedExtractor.Extract(description);
+        var airConditioning = AirConditioningExtractor.Extract(description);
+        var balcony = BalconyExtractor.Extract(description);
+        var renovated = RenovatedExtractor.Extract(description);
+        var storage = StorageExtractor.Extract(description);
+        var waterView = WaterViewExtractor.Extract(description);
+        var nearMetro = NearMetroExtractor.Extract(description);
+        var hasUsageLicense = UsageLicenseExtractor.Extract(description);
+        var energyRating = EnergyRatingExtractor.Extract(description);
+
+        var (locationDistrict, locationConcelho) = LocationHierarchyParser.SplitFlat(locationText);
 
         return new Property
         {
@@ -240,19 +251,30 @@ public class CasaSapoScraper : IPropertyScraper
             Source = Source,
             Price = price,
             LocationString = locationText,
+            Distrito = locationDistrict,
+            Concelho = locationConcelho,
             Beds = beds,
             Baths = null,
             SizeM2 = size,
-            Description = description,
+            Description = DescriptionCleaner.Clean(description),
             SunOrientation = orientation,
             OrientationSource = orientationSource,
             OpenPlanKitchen = openPlanKitchen,
             ConstructionStatus = constructionStatus,
             Elevator = elevator,
             Parking = parking,
+            Furnished = furnished,
+            AirConditioning = airConditioning,
+            Balcony = balcony,
+            Renovated = renovated,
+            Storage = storage,
+            WaterView = waterView,
+            NearMetro = nearMetro,
+            HasUsageLicense = hasUsageLicense,
+            EnergyRating = energyRating,
             PhotosJson = JsonSerializer.Serialize(photoUrl != null ? new[] { photoUrl } : Array.Empty<string>()),
             SourcePropertyId = mediaNode?.GetAttributeValue("data-uid", string.Empty),
-            DedupHash = DedupHashGenerator.Compute(locationText, price ?? 0, beds)
+            DedupHash = DedupHashGenerator.Compute(locationText, price ?? 0, beds, size)
         };
     }
 

@@ -24,6 +24,14 @@ services:
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
+    # Compose only auto-loads a file literally named ".env" — .env.local
+    # (gitignored, real secrets like IDEALISTA_RAPIDAPI_KEY) was never read
+    # automatically, only when something happened to export it into the
+    # shell first. That's why the key kept silently vanishing on every
+    # container recreate. Listed after .env below so its values win.
+    env_file:
+      - .env
+      - .env.local
     environment:
       - ASPNETCORE_URLS=http://+:5000
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
@@ -31,8 +39,16 @@ services:
       - LOG_FILE_PATH=${LOG_FILE_PATH}
       - SCRAPER_MORNING_CRON=${SCRAPER_MORNING_CRON}
       - SCRAPER_EVENING_CRON=${SCRAPER_EVENING_CRON}
-      - IDEALISTA_RAPIDAPI_KEY=${IDEALISTA_RAPIDAPI_KEY}
-      - Cors__AllowedOrigin=http://localhost:3001
+      # IDEALISTA_RAPIDAPI_KEY / ANTHROPIC_API_KEY deliberately NOT listed
+      # here — they come from env_file (.env.local) above. Compose gives
+      # `environment:` precedence over `env_file:` for the same key, so
+      # redeclaring either here (even as ${...}, which only resolves from
+      # the shell or .env, never .env.local) would silently override the
+      # real value with an empty one again.
+      # Comma-separated (see Program.cs) — defaults to the normal local
+      # frontend origin; CORS_ALLOWED_ORIGIN lets a temporary tunnel origin
+      # be added alongside it without needing a code change each time.
+      - Cors__AllowedOrigin=${CORS_ALLOWED_ORIGIN:-http://localhost:3001}
     networks:
       - estate-net
     volumes:

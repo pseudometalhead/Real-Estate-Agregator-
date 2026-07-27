@@ -3,7 +3,7 @@ import { appSettingsApi } from '../api/appSettingsApi';
 import { scrapersApi } from '../api/scrapersApi';
 
 const sources = [
-  { key: 'scrapeIdealistaEnabled', label: 'Idealista', working: false, note: 'needs IDEALISTA_RAPIDAPI_KEY' },
+  { key: 'scrapeIdealistaEnabled', label: 'Idealista', working: true },
   { key: 'scrapeImoVirtualEnabled', label: 'ImoVirtual', working: true },
   { key: 'scrapeImobiliarioEnabled', label: 'CustoJusto', working: true },
   { key: 'scrapeCasaSapoEnabled', label: 'Casa SAPO', working: true },

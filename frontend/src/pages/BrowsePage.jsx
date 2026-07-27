@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FilterSidebar } from '../components/FilterSidebar';
 import { PropertyGrid } from '../components/PropertyGrid';
 import { Map } from '../components/Map';
@@ -19,6 +20,7 @@ function sortValueFor(filters) {
 }
 
 export function BrowsePage() {
+  const navigate = useNavigate();
   const { filters, setFilters, setPage } = useContext(FilterContext);
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +133,7 @@ export function BrowsePage() {
                 </div>
               ) : (
                 <>
-                  <Map properties={mappable} />
+                  <Map properties={mappable} onSelectProperty={(p) => navigate(`/property/${p.id}`)} />
                   {mappable.length < mapProperties.length && (
                     <p className="text-xs text-slate-500 mt-1">
                       {mapProperties.length - mappable.length} of {mapProperties.length} matching

@@ -20,8 +20,8 @@ public class DeduplicationService
 {
     private static readonly TimeSpan DuplicateWindow = TimeSpan.FromDays(30);
 
-    public string GenerateDedupHash(string? locationString, decimal price, int? beds)
-        => DedupHashGenerator.Compute(locationString, price, beds);
+    public string GenerateDedupHash(string? locationString, decimal price, int? beds, decimal? sizeM2 = null)
+        => DedupHashGenerator.Compute(locationString, price, beds, sizeM2);
 
     // Applies the dedup rule this app uses:
     // 0. Already added-but-unsaved earlier in this same scrape run (e.g. a
@@ -39,6 +39,21 @@ public class DeduplicationService
     // 3. Otherwise -> insert as a new property (Added).
     public async Task<DedupOutcome> ProcessAsync(EstateDbContext db, Property candidate)
     {
+        // Idealista's own API isn't internally consistent about what
+        // "Municipality" means — verified live that for some listings
+        // (typically well-known suburbs) it returns a civil-parish
+        // (freguesia) name instead of the real concelho, which
+        // IdealistaScraper.MapToProperty has no way to detect on its own
+        // since it trusts the field name. Applying the correction here,
+        // right before every insert/update, means it's automatically
+        // reapplied on every scrape (including the twice-daily Quartz cron)
+        // instead of needing a one-off backfill re-run after each bad batch.
+        if (PortoDistrictGeography.TryFixMisplacedConcelho(candidate.Concelho, out var correctConcelho, out var demotedFreguesia))
+        {
+            candidate.Concelho = correctConcelho;
+            candidate.Freguesia ??= demotedFreguesia;
+        }
+
         var alreadyPendingInThisBatch = db.ChangeTracker.Entries<Property>()
             .Any(e => e.State == EntityState.Added &&
                       (e.Entity.Url == candidate.Url || e.Entity.DedupHash == candidate.DedupHash));
@@ -62,16 +77,44 @@ public class DeduplicationService
 
             existingByUrl.Price = candidate.Price;
             existingByUrl.LocationString = candidate.LocationString;
+            // Each scraper's MapToProperty derives these from the source's own
+            // structured municipality/parish fields (not a guess), so a
+            // re-scrape's candidate is always at least as accurate as
+            // whatever the existing row has — refresh unconditionally, same
+            // as LocationString above.
+            existingByUrl.Distrito = candidate.Distrito;
+            existingByUrl.Concelho = candidate.Concelho;
+            existingByUrl.Freguesia = candidate.Freguesia;
             existingByUrl.Beds = candidate.Beds;
             existingByUrl.Baths = candidate.Baths;
             existingByUrl.SizeM2 = candidate.SizeM2;
-            existingByUrl.Description = candidate.Description;
+            // Floor/TotalFloors/CondoFeeMonthly/HasPool/HasGarden/YearBuilt/
+            // AiEnrichedAt are deliberately NOT touched here — candidate never
+            // has them (only AiEnrichmentService.cs sets them, straight
+            // in the database), so copying them across would blank out a
+            // previous run's extraction on every twice-daily re-scrape. Only
+            // re-queue for (re-)extraction when the raw text actually changed
+            // — most re-scrapes see byte-identical text and re-running the
+            // AI over it would just burn API calls for the same answer.
+            if (existingByUrl.Description != candidate.Description)
+            {
+                existingByUrl.Description = candidate.Description;
+                existingByUrl.AiEnrichedAt = null;
+            }
             existingByUrl.SunOrientation = candidate.SunOrientation;
             existingByUrl.OrientationSource = candidate.OrientationSource;
             existingByUrl.OpenPlanKitchen = candidate.OpenPlanKitchen;
             existingByUrl.ConstructionStatus = candidate.ConstructionStatus;
             existingByUrl.Elevator = candidate.Elevator;
             existingByUrl.Parking = candidate.Parking;
+            existingByUrl.Furnished = candidate.Furnished;
+            existingByUrl.AirConditioning = candidate.AirConditioning;
+            existingByUrl.Balcony = candidate.Balcony;
+            existingByUrl.Renovated = candidate.Renovated;
+            existingByUrl.Storage = candidate.Storage;
+            existingByUrl.WaterView = candidate.WaterView;
+            existingByUrl.NearMetro = candidate.NearMetro;
+            existingByUrl.EnergyRating = candidate.EnergyRating;
             // Unlike every other field above, agent contact info is only
             // ever populated opportunistically — some scrapers fetch it via
             // an extra per-listing detail-page request made just once, the
@@ -91,8 +134,20 @@ public class DeduplicationService
         }
 
         var cutoff = DateTime.UtcNow - DuplicateWindow;
+        // Only a DIFFERENT source counts as "also listed on another portal" —
+        // a same-source dedup-hash match is either the same physical listing
+        // resurfacing under a decorated URL (a scraper bug: e.g.
+        // CaixaImobiliarioScraper once leaked page-position query params like
+        // pgnr/pos into the listing's own URL, so the identical listing got a
+        // "new" URL on every search page and looked like 49 distinct
+        // "properties" all coincidentally matching each other's hash) or a
+        // hash collision between two genuinely different listings from that
+        // same source. Linking either case produces a nonsensical "Also on:
+        // <the same site the badge already shows>" — so this is treated as a
+        // new, independent property instead of ever creating a same-source
+        // PropertySource link.
         var canonical = await db.Properties
-            .FirstOrDefaultAsync(p => p.DedupHash == candidate.DedupHash && p.LastSeenAt >= cutoff);
+            .FirstOrDefaultAsync(p => p.DedupHash == candidate.DedupHash && p.LastSeenAt >= cutoff && p.Source != candidate.Source);
 
         if (canonical != null)
         {

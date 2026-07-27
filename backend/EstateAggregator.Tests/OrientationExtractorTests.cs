@@ -108,4 +108,45 @@ public class OrientationExtractorTests
         Assert.Equal("Sul", orientation);
         Assert.Equal("extracted", source);
     }
+
+    [Theory]
+    [InlineData("Com orientação solar: N/E.", "Norte/Nascente")]
+    [InlineData("Orientação solar: NE", "Norte/Nascente")]
+    [InlineData("Exposição solar: N/O.", "Norte/Poente")]
+    [InlineData("Orientação: S/E", "Sul/Nascente")]
+    [InlineData("Exposição solar SO.", "Sul/Poente")]
+    public void Extract_CompassAbbreviationAfterOrientationLabel_ReturnsCombinedOrientation(string description, string expected)
+    {
+        var (orientation, source) = OrientationExtractor.Extract(description);
+
+        Assert.Equal(expected, orientation);
+        Assert.Equal("extracted", source);
+    }
+
+    [Theory]
+    [InlineData("Orientação solar: N.", "Norte")]
+    [InlineData("Orientação solar: S", "Sul")]
+    [InlineData("Exposição solar: E.", "Oriente")]
+    [InlineData("Orientação solar: O.", "Poente")]
+    public void Extract_SingleCompassLetterAfterOrientationLabel_ReturnsCardinalOrientation(string description, string expected)
+    {
+        var (orientation, source) = OrientationExtractor.Extract(description);
+
+        Assert.Equal(expected, orientation);
+        Assert.Equal("extracted", source);
+    }
+
+    [Fact]
+    public void Extract_FullWordAfterOrientationLabel_DoesNotMisreadFirstLetter()
+    {
+        // "Nascente" must not be read as a bare "N" (-> Norte) just because
+        // it starts with the letter — the word-boundary check after the
+        // captured letters prevents the compass-abbreviation pattern from
+        // matching here, so this correctly falls through to the existing
+        // full-word "nascente" pattern (-> Oriente) instead.
+        var (orientation, source) = OrientationExtractor.Extract("Orientação: Nascente");
+
+        Assert.Equal("Oriente", orientation);
+        Assert.Equal("extracted", source);
+    }
 }

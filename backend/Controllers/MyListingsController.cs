@@ -70,9 +70,36 @@ public class MyListingsController : ControllerBase
         if (property == null)
             return NotFound("Property not found");
 
-        var alreadyTracked = await _db.MyListings.AnyAsync(ml => ml.PropertyId == dto.PropertyId);
-        if (alreadyTracked)
-            return Conflict("Property is already being tracked");
+        var newStatus = string.IsNullOrEmpty(dto.Status) ? "Interested" : dto.Status;
+        var existing = await _db.MyListings.FirstOrDefaultAsync(ml => ml.PropertyId == dto.PropertyId);
+
+        if (existing != null)
+        {
+            // A Rejected decision expires 72h after it was made (see
+            // GetProperties' PendingActionOnly filter, which re-surfaces the
+            // property in Discover once that window passes) — so the only
+            // case where hitting an existing row here is legitimate, rather
+            // than a genuine duplicate, is re-deciding on one of those. An
+            // Interested row, or a Rejected row still inside its window,
+            // means this property shouldn't have been swipeable again at all.
+            var rejectionCutoff = DateTime.UtcNow.AddHours(-72);
+            var isExpiredRejection = existing.Status == "Rejected" && existing.DateAdded < rejectionCutoff;
+            if (!isExpiredRejection)
+                return Conflict("Property is already being tracked");
+
+            existing.Status = newStatus;
+            existing.Notes = dto.Notes;
+            existing.AgentName = dto.AgentName ?? property.AgentName;
+            existing.AgentPhone = dto.AgentPhone ?? property.AgentPhone;
+            existing.AgentEmail = dto.AgentEmail ?? property.AgentEmail;
+            existing.DateAdded = DateTime.UtcNow;
+            existing.LastUpdated = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+
+            existing.Property = property;
+            return Ok(existing.ToDto());
+        }
 
         // Agent fields default to whatever the scraper already captured on the
         // Property (see PropertyAgentContact migration) rather than starting
@@ -83,7 +110,7 @@ public class MyListingsController : ControllerBase
         var listing = new MyListing
         {
             PropertyId = dto.PropertyId,
-            Status = string.IsNullOrEmpty(dto.Status) ? "Interested" : dto.Status,
+            Status = newStatus,
             Notes = dto.Notes,
             AgentName = dto.AgentName ?? property.AgentName,
             AgentPhone = dto.AgentPhone ?? property.AgentPhone,

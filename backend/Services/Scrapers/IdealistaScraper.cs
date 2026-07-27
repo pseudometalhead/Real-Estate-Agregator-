@@ -291,6 +291,12 @@ public class IdealistaScraper : IPropertyScraper
         var district = item.Province ?? fallbackDistrict;
         var neighborhood = item.District ?? item.Neighborhood ?? item.Municipality;
         var locationString = string.IsNullOrEmpty(neighborhood) ? district : $"{district}, {neighborhood}";
+        // Concelho/Freguesia populated separately from the same fields above
+        // — Municipality is concelho-level, District/Neighborhood is
+        // freguesia-level, and a single result can carry both at once even
+        // though locationString above only ever shows one of them.
+        var concelho = item.Municipality;
+        var freguesia = item.District ?? item.Neighborhood;
 
         var description = item.Description ?? string.Empty;
         var (orientation, orientationSource) = OrientationExtractor.Extract(description);
@@ -298,6 +304,22 @@ public class IdealistaScraper : IPropertyScraper
         var constructionStatus = ConstructionStatusExtractor.Extract(description);
         var elevator = ElevatorExtractor.Extract(description);
         var parking = ParkingExtractor.Extract(description);
+        var furnished = FurnishedExtractor.Extract(description);
+        // Prefer the API's own structured flag (only ever sent as true, when
+        // stated) over the regex fallback, but still fall back to it when the
+        // API is silent on a given amenity.
+        var airConditioning = item.Features?.HasAirConditioning == true
+            ? true
+            : AirConditioningExtractor.Extract(description);
+        var balcony = item.Features?.HasTerrace == true
+            ? true
+            : BalconyExtractor.Extract(description);
+        var renovated = RenovatedExtractor.Extract(description);
+        var storage = StorageExtractor.Extract(description);
+        var waterView = WaterViewExtractor.Extract(description);
+        var nearMetro = NearMetroExtractor.Extract(description);
+        var hasUsageLicense = UsageLicenseExtractor.Extract(description);
+        var energyRating = EnergyRatingExtractor.Extract(description);
         var price = item.Price.HasValue ? (decimal?)item.Price.Value : null;
         var size = item.Size.HasValue ? (decimal?)item.Size.Value : null;
 
@@ -315,23 +337,35 @@ public class IdealistaScraper : IPropertyScraper
             Source = Source,
             Price = price,
             LocationString = locationString,
+            Distrito = district,
+            Concelho = concelho,
+            Freguesia = freguesia,
             Lat = item.Latitude,
             Lng = item.Longitude,
             Beds = item.Rooms,
             Baths = item.Bathrooms,
             SizeM2 = size,
-            Description = description,
+            Description = DescriptionCleaner.Clean(description),
             SunOrientation = orientation,
             OrientationSource = orientationSource,
             OpenPlanKitchen = openPlanKitchen,
             ConstructionStatus = constructionStatus,
             Elevator = elevator,
             Parking = parking,
+            Furnished = furnished,
+            AirConditioning = airConditioning,
+            Balcony = balcony,
+            Renovated = renovated,
+            Storage = storage,
+            WaterView = waterView,
+            NearMetro = nearMetro,
+            HasUsageLicense = hasUsageLicense,
+            EnergyRating = energyRating,
             AgentName = agentName,
             AgentPhone = agentPhone,
             PhotosJson = JsonSerializer.Serialize(photos),
             SourcePropertyId = item.PropertyCode,
-            DedupHash = DedupHashGenerator.Compute(locationString, price ?? 0, item.Rooms)
+            DedupHash = DedupHashGenerator.Compute(locationString, price ?? 0, item.Rooms, size)
         };
     }
 }

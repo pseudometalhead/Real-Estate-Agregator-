@@ -85,11 +85,32 @@ internal class ImoVirtualDetailProps
 internal class ImoVirtualDetailPageProps
 {
     public ImoVirtualUnifiedAd? UnifiedAd { get; set; }
+
+    // The full-resolution photo gallery (12+ on a typical listing) — only
+    // present here, never in the search-result response's own Images list,
+    // which is capped to a handful of preview thumbnails. See
+    // ImoVirtualScraper.FetchDetailAsync.
+    public ImoVirtualAd? Ad { get; set; }
 }
 
 internal class ImoVirtualUnifiedAd
 {
     public string? ResolvedPhone { get; set; }
+
+    // HTML fragment (e.g. "<p>Apartamento...</p><p>Mais informações...</p>"),
+    // unlike the search-result's ShortDescription which is plain-text and
+    // genuinely truncated mid-sentence. See ImoVirtualScraper.StripDescriptionHtml.
+    public string? Description { get; set; }
+}
+
+internal class ImoVirtualAd
+{
+    public List<ImoVirtualDetailImage>? Images { get; set; }
+}
+
+internal class ImoVirtualDetailImage
+{
+    public string? Medium { get; set; }
 }
 
 internal class ImoVirtualMoney

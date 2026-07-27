@@ -207,11 +207,26 @@ namespace EstateAggregator.Data.Migrations
                     b.Property<string>("AgentPhone")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("AiEnrichedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("AirConditioning")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("Balcony")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("Baths")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("Beds")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Concelho")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("CondoFeeMonthly")
+                        .HasColumnType("decimal(8,2)");
 
                     b.Property<string>("ConstructionStatus")
                         .IsRequired()
@@ -227,11 +242,35 @@ namespace EstateAggregator.Data.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Distrito")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool?>("Elevator")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("EnergyRating")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("FirstScrapedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("Floor")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Freguesia")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Furnished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasGarden")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasPool")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool?>("HasUsageLicense")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("LastSeenAt")
                         .HasColumnType("TEXT");
@@ -244,6 +283,9 @@ namespace EstateAggregator.Data.Migrations
 
                     b.Property<string>("LocationString")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("NearMetro")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool?>("OpenPlanKitchen")
                         .HasColumnType("INTEGER");
@@ -262,6 +304,9 @@ namespace EstateAggregator.Data.Migrations
                     b.Property<decimal?>("Price")
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<bool?>("Renovated")
+                        .HasColumnType("INTEGER");
+
                     b.Property<decimal?>("SizeM2")
                         .HasColumnType("decimal(8,2)");
 
@@ -272,13 +317,25 @@ namespace EstateAggregator.Data.Migrations
                     b.Property<string>("SourcePropertyId")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("Storage")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("SunOrientation")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("TotalFloors")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("WaterView")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("YearBuilt")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { getPlatformMeta, getFaviconUrl } from '../utils/platformMeta';
+import { formatLocation } from '../utils/formatLocation';
 
 const orientationStyles = {
   Sul: 'bg-emerald-500/10 text-emerald-400',
   Norte: 'bg-blue-500/10 text-blue-400',
   Oriente: 'bg-amber-500/10 text-amber-400',
   Poente: 'bg-orange-500/10 text-orange-400',
+  'Norte/Nascente': 'bg-cyan-500/10 text-cyan-400',
+  'Norte/Poente': 'bg-indigo-500/10 text-indigo-400',
+  'Sul/Nascente': 'bg-lime-500/10 text-lime-400',
+  'Sul/Poente': 'bg-rose-500/10 text-rose-400',
   'Not Available': 'bg-white/10 text-slate-400',
+};
+
+const constructionIcons = {
+  'Em Construção': '🏗️',
+  'Nova Construção': '🏗️',
+  'Concluída': '✅',
+  'Para Recuperar': '🔧',
 };
 
 // true -> present, false -> confirmed absent, null/undefined -> not mentioned
@@ -35,6 +47,11 @@ export function SwipeCard({ property, style, dragX = 0, onPointerDown, onPointer
 
   const elevatorBadge = triStateBadge(property.elevator, '🛗 Elevador', '🛗 Sem elevador');
   const parkingBadge = triStateBadge(property.parking, '🚗 Garagem', '🚗 Sem garagem');
+  const furnishedBadge = triStateBadge(property.furnished, '🛋️ Mobilado', '🛋️ Não mobilado');
+  const acBadge = triStateBadge(property.airConditioning, '❄️ Ar condicionado', '❄️ Sem ar condicionado');
+  const balconyBadge = triStateBadge(property.balcony, '🌤️ Varanda/Terraço', '🌤️ Sem varanda/terraço');
+  const storageBadge = triStateBadge(property.storage, '📦 Arrecadação', '📦 Sem arrecadação');
+  const licenseBadge = triStateBadge(property.hasUsageLicense, '📋 Com licença de habitação', '📋 Sem licença de habitação');
 
   const likeOpacity = Math.min(Math.max(dragX / 100, 0), 1);
   const nopeOpacity = Math.min(Math.max(-dragX / 100, 0), 1);
@@ -74,7 +91,7 @@ export function SwipeCard({ property, style, dragX = 0, onPointerDown, onPointer
         {photo && !photoFailed ? (
           <img
             src={photo}
-            alt={property.location}
+            alt={formatLocation(property)}
             draggable={false}
             onError={() => setPhotoFailed(true)}
             className="h-full w-full object-cover"
@@ -124,19 +141,15 @@ export function SwipeCard({ property, style, dragX = 0, onPointerDown, onPointer
           <h3 className="text-3xl font-bold text-white drop-shadow">
             €{property.price?.toLocaleString() ?? 'N/A'}
           </h3>
-          <p className="text-sm text-slate-200 drop-shadow">{property.location}</p>
+          <p className="text-sm text-slate-200 drop-shadow">{formatLocation(property)}</p>
         </div>
       </div>
 
       <div className="h-[58%] p-5 flex flex-col overflow-y-auto">
-        <div className="grid grid-cols-3 gap-2 mb-3 text-sm border-b border-white/10 pb-3">
+        <div className="grid grid-cols-2 gap-2 mb-3 text-sm border-b border-white/10 pb-3">
           <div className="text-center">
             <span className="block font-semibold text-white">{property.beds ?? '—'}</span>
             <p className="text-slate-500">Beds</p>
-          </div>
-          <div className="text-center">
-            <span className="block font-semibold text-white">{property.baths ?? '—'}</span>
-            <p className="text-slate-500">Baths</p>
           </div>
           <div className="text-center">
             <span className="block font-semibold text-white">{property.sizeM2 ?? '—'}m²</span>
@@ -160,7 +173,7 @@ export function SwipeCard({ property, style, dragX = 0, onPointerDown, onPointer
           </span>
           {property.constructionStatus && property.constructionStatus !== 'Not Available' && (
             <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-400">
-              🏗️ {property.constructionStatus}
+              {constructionIcons[property.constructionStatus] ?? '🏗️'} {property.constructionStatus}
             </span>
           )}
           {property.openPlanKitchen === true && (
@@ -176,6 +189,77 @@ export function SwipeCard({ property, style, dragX = 0, onPointerDown, onPointer
           {parkingBadge && (
             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${parkingBadge.className}`}>
               {parkingBadge.label}
+            </span>
+          )}
+          {furnishedBadge && (
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${furnishedBadge.className}`}>
+              {furnishedBadge.label}
+            </span>
+          )}
+          {acBadge && (
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${acBadge.className}`}>
+              {acBadge.label}
+            </span>
+          )}
+          {balconyBadge && (
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${balconyBadge.className}`}>
+              {balconyBadge.label}
+            </span>
+          )}
+          {storageBadge && (
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${storageBadge.className}`}>
+              {storageBadge.label}
+            </span>
+          )}
+          {licenseBadge && (
+            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${licenseBadge.className}`}>
+              {licenseBadge.label}
+            </span>
+          )}
+          {property.renovated === true && (
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+              🔨 Renovated
+            </span>
+          )}
+          {property.waterView === true && (
+            <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2.5 py-0.5 text-xs font-medium text-sky-400">
+              🌊 River/Sea View
+            </span>
+          )}
+          {property.nearMetro === true && (
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+              🚇 Near Metro
+            </span>
+          )}
+          {property.energyRating && (
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+              🔋 Energy {property.energyRating}
+            </span>
+          )}
+          {(property.floor || property.totalFloors) && (
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+              🏢 {property.floor ? `Piso ${property.floor}` : 'Piso —'}
+              {property.totalFloors ? ` de ${property.totalFloors}` : ''}
+            </span>
+          )}
+          {property.condoFeeMonthly != null && (
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+              💶 Condomínio €{property.condoFeeMonthly.toLocaleString()}/mês
+            </span>
+          )}
+          {property.hasPool === true && (
+            <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2.5 py-0.5 text-xs font-medium text-sky-400">
+              🏊 Piscina
+            </span>
+          )}
+          {property.hasGarden === true && (
+            <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
+              🌳 Jardim
+            </span>
+          )}
+          {property.yearBuilt && (
+            <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-slate-300">
+              📅 Construído em {property.yearBuilt}
             </span>
           )}
         </div>
@@ -203,13 +287,23 @@ export function SwipeCard({ property, style, dragX = 0, onPointerDown, onPointer
 
         {property.description && (
           <div className="mb-3">
-            <p className="text-xs font-medium text-slate-500 mb-1">Description</p>
+            <p className="text-xs font-medium text-slate-500 mb-1">
+              {/* Once AI extraction has run (see AiEnrichmentService.cs), the
+                  facts above are pulled out of this text and Description is
+                  trimmed down to whatever's genuinely left over — "Description"
+                  no longer describes what's actually shown. */}
+              {property.aiEnrichedAt ? 'Additional details' : 'Description'}
+            </p>
             <p className="text-sm text-slate-300 whitespace-pre-wrap">{property.description}</p>
           </div>
         )}
 
-        {property.agentName && (
-          <p className="text-xs text-slate-500 mb-3">Listed by {property.agentName}</p>
+        {(property.agentName || property.externalId) && (
+          <p className="text-xs text-slate-500 mb-3">
+            {property.agentName && <>Listed by {property.agentName}</>}
+            {property.agentName && property.externalId && ' · '}
+            {property.externalId && <>Ref. {property.externalId}</>}
+          </p>
         )}
 
         <a

@@ -90,7 +90,10 @@ public class ReportService
                 Source = source,
                 Enabled = IsScraperEnabled(source, settings),
                 LastSyncedAt = lastRun?.RunEndTime,
-                HasErrors = lastRun?.HasErrors ?? false
+                HasErrors = lastRun?.HasErrors ?? false,
+                LastErrors = lastRun is { HasErrors: true }
+                    ? MappingExtensions.DeserializeStringList(lastRun.ErrorsJson)
+                    : new List<string>()
             };
         }).ToList();
     }

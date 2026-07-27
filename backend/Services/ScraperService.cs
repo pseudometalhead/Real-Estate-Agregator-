@@ -14,7 +14,8 @@ public class ScraperService
     private readonly ILogger<ScraperService> _logger;
 
     public ScraperService(
-        IEnumerable<IPropertyScraper> scrapers, EstateDbContext db, GeocodingService geocodingService, ILogger<ScraperService> logger)
+        IEnumerable<IPropertyScraper> scrapers, EstateDbContext db, GeocodingService geocodingService,
+        ILogger<ScraperService> logger)
     {
         _scrapers = scrapers;
         _db = db;
@@ -42,6 +43,19 @@ public class ScraperService
         {
             if (!IsScraperEnabled(scraper.Source, settings))
                 continue;
+
+            // Once the caller's token is cancelled (e.g. the HTTP client
+            // gave up waiting), every subsequent scraper would otherwise
+            // throw immediately on its first cancellable await, logged as
+            // its own "Scraper X failed" — a cascade of failures for
+            // sources that never actually ran, not a real per-source
+            // problem. Stop the loop cleanly instead and report what
+            // completed before the cancellation.
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("Scraper run cancelled before {Source} started", scraper.Source);
+                break;
+            }
 
             var runStart = DateTime.UtcNow;
             ScraperReportDto scraperReport;
@@ -86,7 +100,15 @@ public class ScraperService
         settings.LastScrapedAt = DateTime.UtcNow;
         aggregate.EndTime = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync(cancellationToken);
+        // Deliberately CancellationToken.None: if the loop above broke early
+        // because the caller's token was already cancelled, using that same
+        // token here would throw before this save ever ran — losing the
+        // ScraperRun audit rows (and LastScrapedAt) for every source that
+        // DID complete before the cancellation, even though their actual
+        // scraped Properties are already safely committed (each scraper
+        // saves incrementally as it goes). This is bookkeeping, not new
+        // scraping work, so it's worth finishing regardless.
+        await _db.SaveChangesAsync(CancellationToken.None);
 
         try
         {
@@ -98,6 +120,16 @@ public class ScraperService
             // shouldn't mark the whole scrape run as failed.
             _logger.LogWarning(ex, "Geocoding pass failed");
         }
+
+        // AI fact-extraction is NOT run automatically here — the user
+        // doesn't want a paid Anthropic API balance, so AiEnrichmentService
+        // (which calls that API directly) is only reachable via the manual
+        // POST /api/scrapers/enrich-now endpoint, for if that ever changes.
+        // The working, no-cost path is GET pending-enrichment / POST
+        // apply-enrichment on ScrapersController — Claude (this coding
+        // assistant, already running under the user's existing session, no
+        // extra billing) reads the batch, extracts the facts itself, and
+        // posts the results back. See those endpoints' comments.
 
         _logger.LogInformation("Scraper run completed: {Found} found, {Added} added",
             aggregate.PropertiesFound, aggregate.PropertiesAdded);

@@ -80,6 +80,43 @@ public class DedupHashGeneratorTests
         Assert.NotEqual(hash1, hash2);
     }
 
+    // Regression test for a real false-merge found live: a new development
+    // ("Monte da Virgem Flats desde 262.500") sells several genuinely
+    // distinct T2 units at the same starting price in the same
+    // neighborhood — same location/price-bucket/beds, but different sizes.
+    // Without size in the hash these all collided into one property, hiding
+    // the other units as if they were re-listings of the same apartment.
+    [Fact]
+    public void Compute_SameLocationPriceBeds_DifferentSize_ProducesDifferentHashes()
+    {
+        var hash1 = DedupHashGenerator.Compute("Porto, Vilar de Andorinho", 262500m, 3, 62m);
+        var hash2 = DedupHashGenerator.Compute("Porto, Vilar de Andorinho", 262500m, 3, 71m);
+
+        Assert.NotEqual(hash1, hash2);
+    }
+
+    [Fact]
+    public void Compute_SizesInSameBucket_ProduceSameHash()
+    {
+        // Sizes round to the nearest whole m², so 66.0 and 66.4 both land on 66.
+        var hash1 = DedupHashGenerator.Compute("Porto, Cedofeita", 220000m, 2, 66.0m);
+        var hash2 = DedupHashGenerator.Compute("Porto, Cedofeita", 220000m, 2, 66.4m);
+
+        Assert.Equal(hash1, hash2);
+    }
+
+    [Fact]
+    public void Compute_NullSizeVsKnownSize_ProduceDifferentHashes()
+    {
+        // A missing size must NOT collide with any specific size bucket —
+        // otherwise every property this app can't measure would silently
+        // link to the first same-price/beds/location property it can.
+        var hash1 = DedupHashGenerator.Compute("Porto, Cedofeita", 220000m, 2, null);
+        var hash2 = DedupHashGenerator.Compute("Porto, Cedofeita", 220000m, 2, 66m);
+
+        Assert.NotEqual(hash1, hash2);
+    }
+
     [Theory]
     [InlineData("porto, cedofeita")]
     [InlineData("Porto, Cedofeita")]

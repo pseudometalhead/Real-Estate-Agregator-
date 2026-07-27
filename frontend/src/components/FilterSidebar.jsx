@@ -3,7 +3,7 @@ import { FilterContext } from '../context/FilterContext';
 
 const districts = ['All', 'Lisboa', 'Porto', 'Cascais', 'Braga', 'Coimbra', 'Faro', 'Aveiro'];
 const sources = ['All', 'ImoVirtual', 'CasaSapo', 'CaixaImobiliario', 'Santander', 'CustoJusto'];
-const constructionStatuses = ['All', 'Em Construção', 'Nova Construção', 'Para Recuperar', 'Not Available'];
+const constructionStatuses = ['All', 'Em Construção', 'Nova Construção', 'Concluída', 'Para Recuperar', 'Not Available'];
 const addedWithinOptions = [
   { label: 'Any time', value: null },
   { label: 'Last 24 hours', value: 1 },
@@ -99,6 +99,10 @@ export function FilterSidebar() {
           <option className="bg-slate-900"  value="Norte">North (Norte)</option>
           <option className="bg-slate-900"  value="Oriente">East (Oriente)</option>
           <option className="bg-slate-900"  value="Poente">West (Poente)</option>
+          <option className="bg-slate-900"  value="Norte/Nascente">Northeast (Norte/Nascente)</option>
+          <option className="bg-slate-900"  value="Norte/Poente">Northwest (Norte/Poente)</option>
+          <option className="bg-slate-900"  value="Sul/Nascente">Southeast (Sul/Nascente)</option>
+          <option className="bg-slate-900"  value="Sul/Poente">Southwest (Sul/Poente)</option>
           <option className="bg-slate-900"  value="Not Available">Not Available</option>
         </select>
       </div>

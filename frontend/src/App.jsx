@@ -7,6 +7,7 @@ import { BrowsePage } from './pages/BrowsePage';
 import { MyListingsPage } from './pages/MyListingsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReportPage } from './pages/ReportPage';
+import { PropertyDetailPage } from './pages/PropertyDetailPage';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Routes>
             <Route path="/" element={<SwipePage />} />
             <Route path="/search" element={<BrowsePage />} />
+            <Route path="/property/:id" element={<PropertyDetailPage />} />
             <Route path="/my-listings" element={<MyListingsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/reports" element={<ReportPage />} />

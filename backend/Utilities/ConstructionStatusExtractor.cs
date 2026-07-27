@@ -34,6 +34,15 @@ public static class ConstructionStatusExtractor
         @"para recuperar|para restaurar|para reabilitar|necessita(ndo)? de obras|a necessitar de obras|por remodelar|para remodelar|em ru[íi]na|para recupera[cç][ãa]o",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
+    // Explicitly confirmed finished and move-in ready — distinct from "Nova
+    // Construção" (specifically a newly-built unit): a decades-old resale
+    // can just as easily be "pronto a habitar". Checked last since it's the
+    // least specific of the four — a listing matching one of the patterns
+    // above already has a more informative status to report.
+    private static readonly Regex ConcluidaPattern = new(
+        @"pront[oa] (a|para) habitar|constru[cç][ãa]o conclu[íi]da|obra conclu[íi]da|im[óo]vel conclu[íi]do|conclu[íi]da em \d{4}",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public static string Extract(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))
@@ -47,6 +56,9 @@ public static class ConstructionStatusExtractor
 
         if (ParaRecuperarPattern.IsMatch(description))
             return "Para Recuperar";
+
+        if (ConcluidaPattern.IsMatch(description))
+            return "Concluída";
 
         return "Not Available";
     }

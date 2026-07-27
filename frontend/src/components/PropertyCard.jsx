@@ -1,14 +1,27 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { myListingsApi } from '../api/myListingsApi';
 import { ContactPanel } from './ContactPanel';
 import { getPlatformMeta, getFaviconUrl } from '../utils/platformMeta';
+import { formatLocation } from '../utils/formatLocation';
 
 const orientationStyles = {
   Sul: 'bg-emerald-500/10 text-emerald-400',
   Norte: 'bg-blue-500/10 text-blue-400',
   Oriente: 'bg-amber-500/10 text-amber-400',
   Poente: 'bg-orange-500/10 text-orange-400',
+  'Norte/Nascente': 'bg-cyan-500/10 text-cyan-400',
+  'Norte/Poente': 'bg-indigo-500/10 text-indigo-400',
+  'Sul/Nascente': 'bg-lime-500/10 text-lime-400',
+  'Sul/Poente': 'bg-rose-500/10 text-rose-400',
   'Not Available': 'bg-white/10 text-slate-400',
+};
+
+const constructionIcons = {
+  'Em Construção': '🏗️',
+  'Nova Construção': '🏗️',
+  'Concluída': '✅',
+  'Para Recuperar': '🔧',
 };
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,6 +55,7 @@ function PropertyPhoto({ photos, alt }) {
 }
 
 export function PropertyCard({ property, onAdded }) {
+  const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   // The listing just created by a ❤️ tap — same one-tap send moment as the
@@ -94,8 +108,20 @@ export function PropertyCard({ property, onAdded }) {
     }
   };
 
+  // Navigates to the full-detail page — but not when the click actually
+  // landed on an interactive child (View on Site, Pass/Interested, "Also
+  // on:" links), which should handle its own click instead of being
+  // swallowed here.
+  const handleCardClick = (e) => {
+    if (e.target.closest('button, a')) return;
+    navigate(`/property/${property.id}`);
+  };
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl p-5 shadow-xl hover:bg-white/[0.09] hover:border-white/20 hover:shadow-2xl hover:shadow-blue-500/10 transition-all flex flex-col">
+    <div
+      onClick={handleCardClick}
+      className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl p-5 shadow-xl hover:bg-white/[0.09] hover:border-white/20 hover:shadow-2xl hover:shadow-blue-500/10 transition-all flex flex-col"
+    >
       <div className="relative">
         {isNew(property.createdAt) && (
           <span className="absolute top-2 left-2 z-10 inline-flex items-center rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-medium text-white shadow">
@@ -111,7 +137,7 @@ export function PropertyCard({ property, onAdded }) {
           {platform.label}
         </span>
 
-        <PropertyPhoto photos={property.photos} alt={property.location} />
+        <PropertyPhoto photos={property.photos} alt={formatLocation(property)} />
       </div>
 
       <div className="mb-3">
@@ -129,7 +155,10 @@ export function PropertyCard({ property, onAdded }) {
             </span>
           )}
         </div>
-        <p className="text-sm text-slate-400 mt-0.5">{property.location}</p>
+        <p className="text-sm text-slate-400 mt-0.5">{formatLocation(property)}</p>
+        {property.externalId && (
+          <p className="text-xs text-slate-500 mt-0.5">Ref. {property.externalId}</p>
+        )}
         {property.linkedSources?.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             <span className="text-xs text-slate-500">Also on:</span>
@@ -152,14 +181,10 @@ export function PropertyCard({ property, onAdded }) {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-4 text-sm border-y border-white/10 py-3">
+      <div className="grid grid-cols-2 gap-2 mb-4 text-sm border-y border-white/10 py-3">
         <div className="text-center">
           <span className="block font-semibold text-white">{property.beds ?? '—'}</span>
           <p className="text-slate-500">Beds</p>
-        </div>
-        <div className="text-center">
-          <span className="block font-semibold text-white">{property.baths ?? '—'}</span>
-          <p className="text-slate-500">Baths</p>
         </div>
         <div className="text-center">
           <span className="block font-semibold text-white">{property.sizeM2 ?? '—'}m²</span>
@@ -185,7 +210,7 @@ export function PropertyCard({ property, onAdded }) {
         </span>
         {property.constructionStatus && property.constructionStatus !== 'Not Available' && (
           <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2.5 py-0.5 text-xs font-medium text-violet-400">
-            🏗️ {property.constructionStatus}
+            {constructionIcons[property.constructionStatus] ?? '🏗️'} {property.constructionStatus}
           </span>
         )}
         {property.elevator === true && (
@@ -215,17 +240,21 @@ export function PropertyCard({ property, onAdded }) {
           onClick={handlePass}
           disabled={submitting}
           aria-label="Pass"
-          className="rounded-lg bg-white/10 px-4 py-2.5 text-lg transition-colors hover:bg-white/20 disabled:opacity-50"
+          className="group flex items-center justify-center rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2.5 transition-colors hover:bg-red-500/20 hover:border-red-500/50 disabled:opacity-50"
         >
-          ❌
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="h-5 w-5 text-red-400 group-hover:text-red-300">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </button>
         <button
           onClick={handleInterested}
           disabled={submitting}
           aria-label="Interested"
-          className="rounded-lg bg-white/10 px-4 py-2.5 text-lg transition-colors hover:bg-white/20 disabled:opacity-50"
+          className="group flex items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 transition-colors hover:bg-emerald-500/20 hover:border-emerald-500/50 disabled:opacity-50"
         >
-          ❤️
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5 text-emerald-400 group-hover:text-emerald-300">
+            <path d="M12 21s-6.716-4.35-9.428-8.09C.86 10.31 1.02 7.14 3.34 5.24c2.02-1.65 4.85-1.32 6.66.63L12 7.94l2-2.07c1.81-1.95 4.64-2.28 6.66-.63 2.32 1.9 2.48 5.07.77 7.67C18.716 16.65 12 21 12 21z" />
+          </svg>
         </button>
       </div>
 

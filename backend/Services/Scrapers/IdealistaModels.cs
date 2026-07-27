@@ -39,6 +39,21 @@ internal class IdealistaSearchElement
     // "contactInfo":{"commercialName":"...","phone1":{"phoneNumber":"...",...},"contactName":"..."}.
     // System.Text.Json ignores any of this shape's fields not declared here.
     public IdealistaContactInfo? ContactInfo { get; set; }
+
+    // Verified live: {"hasTerrace":true,"hasAirConditioning":true,"hasBoxRoom":true}
+    // — only present (and only ever true) for amenities the listing actually
+    // has; there's no observed explicit-false case, so a missing/null flag
+    // here means "not stated by the API," not "confirmed absent." See
+    // IdealistaScraper.MapToProperty for how this combines with the same
+    // regex extractors every other source uses, as a fallback when the API
+    // itself doesn't mention a given amenity.
+    public IdealistaFeatures? Features { get; set; }
+}
+
+internal class IdealistaFeatures
+{
+    public bool? HasAirConditioning { get; set; }
+    public bool? HasTerrace { get; set; }
 }
 
 internal class IdealistaContactInfo

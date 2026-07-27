@@ -35,6 +35,18 @@ public class CaixaImobiliarioScraper : IPropertyScraper
 
     private static readonly Regex RoomsRegex = new(@"[Tt](\d+)\b", RegexOptions.Compiled);
 
+    // A listing's own href carries the site's search-context query params
+    // (pos/pgnr/ofs/rsnr — position within whatever results page it happened
+    // to be found on) alongside the actual listing id. Verified live: the
+    // SAME listing (same id=) recurs across every page of a search whose
+    // real result count is smaller than MaxPagesPerSource, each time with a
+    // different pos/pgnr — keeping those params in Url made 49 re-encounters
+    // of one physical listing look like 49 distinct URLs, which
+    // DeduplicationService then linked to each other as fake "also listed
+    // on Caixa Imobiliário [itself]" duplicates. Only "id" actually
+    // identifies the listing, so that's all the canonical Url keeps.
+    private static readonly Regex IdParamRegex = new(@"[?&]id=(\d+)", RegexOptions.Compiled);
+
     private bool _hasMadeFirstRequest;
 
     public CaixaImobiliarioScraper(HttpClient httpClient, EstateDbContext db, DeduplicationService dedupService, ILogger<CaixaImobiliarioScraper> logger)
@@ -171,9 +183,10 @@ public class CaixaImobiliarioScraper : IPropertyScraper
         if (string.IsNullOrEmpty(href))
             return null;
 
-        var url = href.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-            ? href
-            : "https://www.caixaimobiliario.pt" + href;
+        var url = CanonicalizeUrl(
+            href.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? href
+                : "https://www.caixaimobiliario.pt" + href);
 
         var typeText = HtmlEntity.DeEntitize(anchor?.InnerText.Trim() ?? string.Empty);
 
@@ -183,8 +196,10 @@ public class CaixaImobiliarioScraper : IPropertyScraper
 
         // Location renders as "District | Municipality" on its own line.
         var locationMatch = Regex.Match(fullText, @"([A-ZÀ-Ýa-zà-ÿ][^\n|]{1,40})\s*\|\s*([^\n]{1,40})");
+        var locationDistrict = locationMatch.Success ? locationMatch.Groups[1].Value.Trim() : null;
+        var locationMunicipality = locationMatch.Success ? locationMatch.Groups[2].Value.Trim() : null;
         var location = locationMatch.Success
-            ? $"{locationMatch.Groups[1].Value.Trim()}, {locationMatch.Groups[2].Value.Trim()}"
+            ? $"{locationDistrict}, {locationMunicipality}"
             : "Unknown";
 
         if (normalizedDistricts.Count > 0)
@@ -198,12 +213,51 @@ public class CaixaImobiliarioScraper : IPropertyScraper
         var refMatch = Regex.Match(fullText, @"Ref\.\s*([\w/]+)");
         var sourcePropertyId = refMatch.Success ? refMatch.Groups[1].Value : null;
 
-        var description = typeText + (string.IsNullOrEmpty(typeText) ? "" : " — ") + fullText;
-        var (orientation, orientationSource) = OrientationExtractor.Extract(description);
-        var openPlanKitchen = OpenPlanKitchenExtractor.Extract(description);
-        var constructionStatus = ConstructionStatusExtractor.Extract(description);
-        var elevator = ElevatorExtractor.Extract(description);
-        var parking = ParkingExtractor.Extract(description);
+        // node.InnerText concatenates EVERYTHING in the card — price,
+        // "District | Municipality", the size line, ref — with no
+        // separators, so using it as-is for Description dumped raw
+        // whitespace and redundant labels straight to the user (verified
+        // live: https://www.caixaimobiliario.pt/comprar/imoveis-venda.jsp).
+        // The actual free-text blurb lives in its own plain <span> (no
+        // attributes), sitting between the "54 m² de área bruta" span
+        // (which DOES have a style attribute) and the "Ref. ..." span
+        // (also bare, but always starts with "Ref.").
+        var descriptionSpanText = node.SelectNodes(".//span[not(@style)]")?
+            .Select(s => HtmlEntity.DeEntitize(s.InnerText)?.Trim() ?? string.Empty)
+            .FirstOrDefault(t => t.Length > 0 && !t.StartsWith("Ref.", StringComparison.OrdinalIgnoreCase));
+        var cleanDescription = string.IsNullOrEmpty(descriptionSpanText)
+            ? typeText
+            : $"{typeText} — {Regex.Replace(descriptionSpanText, @"\s+", " ").Trim()}";
+
+        // Same span-based approach for size: "54 m² de área bruta" lives in
+        // the one <span style="..."> in the card (every other span here is
+        // bare) — regexing the whole blob risked matching digits from the
+        // price or ref instead.
+        var sizeSpanText = node.SelectSingleNode(".//span[@style]")?.InnerText;
+        var sizeMatch = string.IsNullOrEmpty(sizeSpanText) ? null : Regex.Match(sizeSpanText, @"(\d+(?:[.,]\d+)?)\s*m");
+        var size = sizeMatch is { Success: true }
+            ? decimal.Parse(sizeMatch.Groups[1].Value.Replace(',', '.'), NumberStyles.Number, CultureInfo.InvariantCulture)
+            : (decimal?)null;
+
+        // Extractors still scan the full raw text blob (fullText), not just
+        // the isolated description span — more recall, and none of these
+        // patterns can false-positive on a price or "District | Municipality"
+        // line, so there's nothing to lose by including them.
+        var extractionText = typeText + (string.IsNullOrEmpty(typeText) ? "" : " — ") + fullText;
+        var (orientation, orientationSource) = OrientationExtractor.Extract(extractionText);
+        var openPlanKitchen = OpenPlanKitchenExtractor.Extract(extractionText);
+        var constructionStatus = ConstructionStatusExtractor.Extract(extractionText);
+        var elevator = ElevatorExtractor.Extract(extractionText);
+        var parking = ParkingExtractor.Extract(extractionText);
+        var furnished = FurnishedExtractor.Extract(extractionText);
+        var airConditioning = AirConditioningExtractor.Extract(extractionText);
+        var balcony = BalconyExtractor.Extract(extractionText);
+        var renovated = RenovatedExtractor.Extract(extractionText);
+        var storage = StorageExtractor.Extract(extractionText);
+        var waterView = WaterViewExtractor.Extract(extractionText);
+        var nearMetro = NearMetroExtractor.Extract(extractionText);
+        var hasUsageLicense = UsageLicenseExtractor.Extract(extractionText);
+        var energyRating = EnergyRatingExtractor.Extract(extractionText);
         var beds = ParseRooms(typeText);
 
         var photoUrl = node.SelectSingleNode("preceding-sibling::div[@class='mod_imovel'][1]//img")?.GetAttributeValue("src", string.Empty)
@@ -216,20 +270,41 @@ public class CaixaImobiliarioScraper : IPropertyScraper
             Source = Source,
             Price = price,
             LocationString = location,
+            Distrito = locationDistrict,
+            Concelho = locationMunicipality,
             Beds = beds,
             Baths = null,
-            SizeM2 = null,
-            Description = description.Trim(),
+            SizeM2 = size,
+            Description = DescriptionCleaner.Clean(cleanDescription.Trim()),
             SunOrientation = orientation,
             OrientationSource = orientationSource,
             OpenPlanKitchen = openPlanKitchen,
             ConstructionStatus = constructionStatus,
             Elevator = elevator,
             Parking = parking,
+            Furnished = furnished,
+            AirConditioning = airConditioning,
+            Balcony = balcony,
+            Renovated = renovated,
+            Storage = storage,
+            WaterView = waterView,
+            NearMetro = nearMetro,
+            HasUsageLicense = hasUsageLicense,
+            EnergyRating = energyRating,
             PhotosJson = JsonSerializer.Serialize(photoUrl != null ? new[] { photoUrl } : Array.Empty<string>()),
             SourcePropertyId = sourcePropertyId,
-            DedupHash = DedupHashGenerator.Compute(location, price ?? 0, beds)
+            DedupHash = DedupHashGenerator.Compute(location, price ?? 0, beds, size)
         };
+    }
+
+    private static string CanonicalizeUrl(string url)
+    {
+        var idMatch = IdParamRegex.Match(url);
+        if (!idMatch.Success)
+            return url; // Defensive fallback — unexpected shape, keep the raw href rather than losing the listing.
+
+        var path = url[..url.IndexOf('?')];
+        return $"{path}?id={idMatch.Groups[1].Value}";
     }
 
     private static int? ParseRooms(string typeText)
