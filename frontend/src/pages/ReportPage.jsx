@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { reportsApi } from '../api/reportsApi';
 import { DailyReport } from '../components/DailyReport';
+import { Skeleton } from '../components/Skeleton';
 
 export function ReportPage() {
   const [report, setReport] = useState(null);
@@ -41,20 +42,31 @@ export function ReportPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">Daily Report</h1>
+        <h1 className="text-3xl font-bold text-white">Daily Report</h1>
         <button
           onClick={handleRunNow}
           disabled={running}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
+          className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400 disabled:opacity-50"
         >
           {running ? 'Running scrapers...' : 'Run scrapers now'}
         </button>
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-600">Loading...</div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+          </div>
+          <Skeleton className="h-40" />
+        </div>
       ) : (
         <DailyReport report={report} />
       )}

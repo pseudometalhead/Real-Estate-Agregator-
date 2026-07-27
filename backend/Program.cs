@@ -46,9 +46,14 @@ if (!string.IsNullOrEmpty(sqliteDirectory))
 
 builder.Services.AddDbContext<EstateDbContext>(options => options.UseSqlite(connectionString));
 
+// Talks to the RapidAPI JSON wrapper (idealista-real-estate.p.rapidapi.com),
+// not idealista.pt directly, so no browser User-Agent is needed here — auth
+// (x-rapidapi-key/x-rapidapi-host) is attached per-request in
+// IdealistaScraper itself, not as a default header, since IDEALISTA_RAPIDAPI_KEY
+// may be unset at startup. The retry/circuit-breaker policies below already
+// handle the API's documented 429/502/503 responses with backoff.
 builder.Services.AddHttpClient<IdealistaScraper>(client =>
     {
-        client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
         client.Timeout = TimeSpan.FromSeconds(30);
     })
     .AddPolicyHandler(HttpClientPolicies.GetRetryPolicy())

@@ -124,6 +124,7 @@ public class SantanderScraper : IPropertyScraper
             {
                 case DedupOutcome.Added: report.PropertiesAdded++; break;
                 case DedupOutcome.Updated: report.PropertiesUpdated++; break;
+                case DedupOutcome.Linked: report.PropertiesLinked++; break;
                 case DedupOutcome.Skipped: report.PropertiesSkipped++; break;
             }
         }
@@ -198,6 +199,10 @@ public class SantanderScraper : IPropertyScraper
 
         var fullDescription = $"{typeTag} — {description}".Trim(' ', '—');
         var (orientation, orientationSource) = OrientationExtractor.Extract(fullDescription);
+        var openPlanKitchen = OpenPlanKitchenExtractor.Extract(fullDescription);
+        var constructionStatus = ConstructionStatusExtractor.Extract(fullDescription);
+        var elevator = ElevatorExtractor.Extract(fullDescription);
+        var parking = ParkingExtractor.Extract(fullDescription);
 
         return new Property
         {
@@ -211,6 +216,10 @@ public class SantanderScraper : IPropertyScraper
             Description = fullDescription,
             SunOrientation = orientation,
             OrientationSource = orientationSource,
+            OpenPlanKitchen = openPlanKitchen,
+            ConstructionStatus = constructionStatus,
+            Elevator = elevator,
+            Parking = parking,
             PhotosJson = JsonSerializer.Serialize(photoUrl != null ? new[] { photoUrl } : Array.Empty<string>()),
             SourcePropertyId = ExtractRef(typeTag),
             DedupHash = DedupHashGenerator.Compute(location, price ?? 0, beds)

@@ -6,6 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- Exclude the nested test project's files from this project's implicit
+       compile glob, otherwise its generated obj/ files (which reference
+       xunit) get pulled into this build and fail to compile. -->
+  <ItemGroup>
+    <Compile Remove="EstateAggregator.Tests\**\*.cs" />
+    <Content Remove="EstateAggregator.Tests\**\*" />
+    <None Remove="EstateAggregator.Tests\**\*" />
+    <EmbeddedResource Remove="EstateAggregator.Tests\**\*" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.11">

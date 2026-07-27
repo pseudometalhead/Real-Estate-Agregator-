@@ -5,10 +5,18 @@ namespace EstateAggregator.Utilities;
 
 public static class DedupHashGenerator
 {
+    // Prices are bucketed to the nearest 2500 (rather than hashed exactly)
+    // before hashing so the same physical apartment listed on two different
+    // portals — where a small €500-2000 discrepancy from rounding or fees is
+    // common — still lands in the same hash and is recognized as a
+    // cross-portal duplicate, instead of being treated as two properties.
+    private const decimal PriceBucketSize = 2500m;
+
     public static string Compute(string? locationString, decimal price, int? beds)
     {
         var normalizedLocation = NormalizeLocation(locationString);
-        var hashInput = $"{normalizedLocation}|{price:F0}|{beds ?? 0}";
+        var bucketedPrice = Math.Round(price / PriceBucketSize) * PriceBucketSize;
+        var hashInput = $"{normalizedLocation}|{bucketedPrice:F0}|{beds ?? 0}";
         return ComputeSha256(hashInput)[..16];
     }
 

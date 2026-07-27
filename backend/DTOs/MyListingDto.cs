@@ -14,6 +14,7 @@ public class MyListingDto
     public string? AgentEmail { get; set; }
 
     public bool AskedAboutOrientation { get; set; }
+    public bool AskedAboutOpenPlanKitchen { get; set; }
     public DateTime? FollowUpDate { get; set; }
 
     public DateTime DateAdded { get; set; }
@@ -32,6 +33,10 @@ public class CreateMyListingDto
     public string? AgentName { get; set; }
     public string? AgentPhone { get; set; }
     public string? AgentEmail { get; set; }
+    // Null/omitted = "Interested" (the long-standing default) — lets the
+    // swipe-to-triage page create a Rejected listing directly on a
+    // left-swipe instead of a create-then-immediately-PUT round trip.
+    public string? Status { get; set; }
 }
 
 public class UpdateMyListingDto
@@ -42,5 +47,6 @@ public class UpdateMyListingDto
     public string? AgentPhone { get; set; }
     public string? AgentEmail { get; set; }
     public bool? AskedAboutOrientation { get; set; }
+    public bool? AskedAboutOpenPlanKitchen { get; set; }
     public DateTime? FollowUpDate { get; set; }
 }

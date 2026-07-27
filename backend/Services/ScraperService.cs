@@ -73,6 +73,7 @@ public class ScraperService
                 PropertiesFound = scraperReport.PropertiesFound,
                 PropertiesAdded = scraperReport.PropertiesAdded,
                 PropertiesUpdated = scraperReport.PropertiesUpdated,
+                PropertiesLinked = scraperReport.PropertiesLinked,
                 PropertiesSkipped = scraperReport.PropertiesSkipped,
                 HasErrors = scraperReport.HasErrors,
                 ErrorsJson = JsonSerializer.Serialize(scraperReport.Errors),
@@ -108,7 +109,7 @@ public class ScraperService
     {
         "Idealista" => settings.ScrapeIdealistaEnabled,
         "ImoVirtual" => settings.ScrapeImoVirtualEnabled,
-        "Imobiliario" => settings.ScrapeImobiliarioEnabled,
+        "CustoJusto" => settings.ScrapeImobiliarioEnabled,
         "CasaSapo" => settings.ScrapeCasaSapoEnabled,
         "CaixaImobiliario" => settings.ScrapeCaixaImobiliarioEnabled,
         "Santander" => settings.ScrapeSantanderEnabled,

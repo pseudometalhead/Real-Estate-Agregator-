@@ -23,6 +23,9 @@ namespace EstateAggregator.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AvailabilityText")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DistrictsJson")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -33,6 +36,9 @@ namespace EstateAggregator.Data.Migrations
                     b.Property<string>("LogFilePath")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxPagesPerSource")
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("PriceMax")
                         .HasColumnType("decimal(10,2)");
@@ -63,6 +69,9 @@ namespace EstateAggregator.Data.Migrations
 
                     b.Property<bool>("ScrapeSantanderEnabled")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("SenderName")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -122,6 +131,9 @@ namespace EstateAggregator.Data.Migrations
 
                     b.Property<string>("AgentPhone")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("AskedAboutOpenPlanKitchen")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("AskedAboutOrientation")
                         .HasColumnType("INTEGER");
@@ -186,11 +198,24 @@ namespace EstateAggregator.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AgentEmail")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AgentName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AgentPhone")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("Baths")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("Beds")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("ConstructionStatus")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
@@ -201,6 +226,9 @@ namespace EstateAggregator.Data.Migrations
 
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Elevator")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("FirstScrapedAt")
                         .HasColumnType("TEXT");
@@ -217,9 +245,15 @@ namespace EstateAggregator.Data.Migrations
                     b.Property<string>("LocationString")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool?>("OpenPlanKitchen")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("OrientationSource")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool?>("Parking")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("PhotosJson")
                         .IsRequired()
@@ -266,6 +300,41 @@ namespace EstateAggregator.Data.Migrations
                     b.ToTable("Properties");
                 });
 
+            modelBuilder.Entity("EstateAggregator.Models.PropertySource", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("FirstSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("Price")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("PropertyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PropertyId");
+
+                    b.HasIndex("Url");
+
+                    b.ToTable("PropertySources");
+                });
+
             modelBuilder.Entity("EstateAggregator.Models.ScraperRun", b =>
                 {
                     b.Property<int>("Id")
@@ -286,6 +355,9 @@ namespace EstateAggregator.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("PropertiesFound")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PropertiesLinked")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("PropertiesSkipped")
@@ -346,6 +418,17 @@ namespace EstateAggregator.Data.Migrations
                     b.Navigation("Property");
                 });
 
+            modelBuilder.Entity("EstateAggregator.Models.PropertySource", b =>
+                {
+                    b.HasOne("EstateAggregator.Models.Property", "Property")
+                        .WithMany("LinkedSources")
+                        .HasForeignKey("PropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Property");
+                });
+
             modelBuilder.Entity("EstateAggregator.Models.MyListing", b =>
                 {
                     b.Navigation("CommHistory");
@@ -353,6 +436,8 @@ namespace EstateAggregator.Data.Migrations
 
             modelBuilder.Entity("EstateAggregator.Models.Property", b =>
                 {
+                    b.Navigation("LinkedSources");
+
                     b.Navigation("MyListing");
 
                     b.Navigation("PriceHistory");

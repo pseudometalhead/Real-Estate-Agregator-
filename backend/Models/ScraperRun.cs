@@ -10,6 +10,7 @@ public class ScraperRun
     public int PropertiesFound { get; set; }
     public int PropertiesAdded { get; set; }
     public int PropertiesUpdated { get; set; }
+    public int PropertiesLinked { get; set; }
     public int PropertiesSkipped { get; set; }
 
     public bool HasErrors { get; set; }

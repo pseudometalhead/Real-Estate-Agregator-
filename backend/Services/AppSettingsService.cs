@@ -31,12 +31,15 @@ public class AppSettingsService
         settings.PriceMax = dto.PriceMax;
         settings.RoomsMin = dto.RoomsMin;
         settings.RoomsMax = dto.RoomsMax;
+        settings.MaxPagesPerSource = dto.MaxPagesPerSource;
         settings.ScrapeIdealistaEnabled = dto.ScrapeIdealistaEnabled;
         settings.ScrapeImoVirtualEnabled = dto.ScrapeImoVirtualEnabled;
         settings.ScrapeImobiliarioEnabled = dto.ScrapeImobiliarioEnabled;
         settings.ScrapeCasaSapoEnabled = dto.ScrapeCasaSapoEnabled;
         settings.ScrapeCaixaImobiliarioEnabled = dto.ScrapeCaixaImobiliarioEnabled;
         settings.ScrapeSantanderEnabled = dto.ScrapeSantanderEnabled;
+        settings.AvailabilityText = dto.AvailabilityText;
+        settings.SenderName = dto.SenderName;
         settings.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

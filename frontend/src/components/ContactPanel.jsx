@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { commHistoryApi } from '../api/commHistoryApi';
-import { draftInquiry, buildMailtoLink } from '../utils/messageTemplates';
+import { myListingsApi } from '../api/myListingsApi';
+import { appSettingsApi } from '../api/appSettingsApi';
+import { draftInquiry, buildMailtoLink, buildWhatsAppLink } from '../utils/messageTemplates';
 
 const channelLabels = {
+  WhatsApp: '💚 WhatsApp',
   Email: '✉️ Email',
+  SMS: '💬 SMS',
   Phone: '📞 Phone',
   Site: '🌐 Site form',
   InPerson: '🤝 In person',
@@ -15,11 +19,26 @@ export function ContactPanel({ listing, onClose, onLogged }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const draft = draftInquiry(listing);
+  // null while loading — draftInquiry treats null/undefined the same as ''
+  // (no availability line), so the first draft render (before Settings
+  // loads) is identical to one with nothing set.
+  const [availabilityText, setAvailabilityText] = useState(null);
+  const [senderName, setSenderName] = useState(null);
+  const [edited, setEdited] = useState(false);
+
+  const draft = useMemo(
+    () => draftInquiry(listing, { availabilityText, senderName }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [listing, availabilityText, senderName]
+  );
   const [subject, setSubject] = useState(draft.subject);
   const [body, setBody] = useState(draft.body);
   const [replyText, setReplyText] = useState('');
   const [saving, setSaving] = useState(false);
+  // Tracks which "Open in ..." link the user actually clicked, so the log
+  // entry records the channel they really used. Falls back to the
+  // existing Email/Phone guess when neither was explicitly clicked.
+  const [clickedChannel, setClickedChannel] = useState(null);
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -37,6 +56,31 @@ export function ContactPanel({ listing, onClose, onLogged }) {
   useEffect(() => {
     fetchHistory();
   }, [fetchHistory]);
+
+  useEffect(() => {
+    appSettingsApi
+      .getSettings()
+      .then((s) => {
+        setAvailabilityText(s.availabilityText ?? '');
+        setSenderName(s.senderName ?? '');
+      })
+      .catch(() => {
+        setAvailabilityText('');
+        setSenderName('');
+      });
+  }, []);
+
+  // Re-seeds the editable subject/body once the real availabilityText/
+  // senderName come back from Settings — but only if the user hasn't
+  // started editing yet, so a fast typist doesn't get their draft silently
+  // overwritten.
+  useEffect(() => {
+    if (availabilityText !== null && senderName !== null && !edited) {
+      setSubject(draft.subject);
+      setBody(draft.body);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availabilityText, senderName]);
 
   const logEntry = async (channel, direction, message, entrySubject) => {
     setSaving(true);
@@ -67,76 +111,118 @@ export function ContactPanel({ listing, onClose, onLogged }) {
     setReplyText('');
   };
 
+  // WhatsApp opens in a real chat with this text pre-filled — still one tap
+  // away from actually sending (WhatsApp's own Send button), so it's logged
+  // the same way as Email/Phone: the user confirms afterward via "I've sent
+  // this — log it", not automatically on click.
+  const handleOpenWhatsApp = () => setClickedChannel('WhatsApp');
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      {/* Modals need to be solidly readable over whatever's behind them —
+          the card-level bg-white/[0.06] "glass" treatment is far too
+          transparent here and lets background text/badges bleed through. */}
+      <div className="rounded-xl border border-white/10 bg-slate-900/95 backdrop-blur-xl shadow-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-start mb-4">
-          <h2 className="text-2xl font-bold">Contact Agent</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl leading-none">
+          <h2 className="text-2xl font-bold text-white">Contact Agent</h2>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-300 text-xl leading-none"
+          >
             ×
           </button>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
-          This drafts a message for you to review — nothing is sent automatically. Send it yourself
-          via your email client (or by phone), then log it below to keep a record.
+        <p className="text-sm text-slate-400 mb-4">
+          {listing.agentPhone
+            ? 'This drafts a message for you to review and edit. Nothing sends automatically — tap "Open in WhatsApp" (or Email) below, hit send there yourself, then log it here to keep a record.'
+            : 'This drafts a message for you to review — nothing is sent automatically. Send it yourself via your email client, WhatsApp, or by phone, then log it below to keep a record.'}
         </p>
 
-        {error && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded">{error}</div>}
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
-        <div className="mb-4 p-4 bg-gray-50 rounded space-y-3">
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Subject</label>
             <input
               type="text"
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
+              onChange={(e) => {
+                setEdited(true);
+                setSubject(e.target.value);
+              }}
+              className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Message</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1">Message</label>
             <textarea
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={(e) => {
+                setEdited(true);
+                setBody(e.target.value);
+              }}
               rows={7}
-              className="w-full px-3 py-2 border rounded text-sm"
+              className="w-full rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
 
           <div className="flex gap-2 flex-wrap">
+            {listing.agentPhone && (
+              <a
+                href={buildWhatsAppLink(listing.agentPhone, body)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={handleOpenWhatsApp}
+                title="Opens WhatsApp with this exact message pre-filled — you still tap Send there."
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
+              >
+                💚 Open in WhatsApp
+              </a>
+            )}
             {listing.agentEmail && (
               <a
                 href={buildMailtoLink(listing.agentEmail, subject, body)}
-                className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                onClick={() => setClickedChannel('Email')}
+                className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400"
               >
                 Open in Email
               </a>
             )}
             <button
               onClick={handleCopy}
-              className="px-3 py-2 bg-gray-200 rounded text-sm hover:bg-gray-300"
+              className="rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/20"
             >
               Copy Message
             </button>
             <button
-              onClick={() => logEntry(listing.agentEmail ? 'Email' : 'Phone', 'Outbound', body, subject)}
+              onClick={() =>
+                logEntry(
+                  clickedChannel ?? (listing.agentPhone ? 'WhatsApp' : listing.agentEmail ? 'Email' : 'Phone'),
+                  'Outbound',
+                  body,
+                  subject
+                )
+              }
               disabled={saving}
-              className="px-3 py-2 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 disabled:opacity-50"
+              className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
             >
               {saving ? 'Logging...' : "I've sent this — log it"}
             </button>
           </div>
-          {!listing.agentEmail && (
-            <p className="text-xs text-gray-500">
-              No agent email on file — call {listing.agentPhone || 'the agent'} and read this, or use
-              the site's own contact form, then log it above.
+          {!listing.agentEmail && !listing.agentPhone && (
+            <p className="text-xs text-slate-400">
+              No agent email or phone on file — use the site's own contact form, then log it above.
             </p>
           )}
         </div>
 
-        <div className="mb-4 p-4 bg-gray-50 rounded">
-          <label className="block text-xs font-medium text-gray-600 mb-1">
+        <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-4">
+          <label className="block text-xs font-medium text-slate-400 mb-1">
             Log a reply or note from the agent
           </label>
           <div className="flex gap-2">
@@ -145,12 +231,12 @@ export function ContactPanel({ listing, onClose, onLogged }) {
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="e.g. Agent confirmed the apartment faces south..."
-              className="flex-1 px-3 py-2 border rounded text-sm"
+              className="flex-1 rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             <button
               onClick={handleLogReply}
               disabled={saving || !replyText.trim()}
-              className="px-3 py-2 bg-gray-700 text-white rounded text-sm hover:bg-gray-800 disabled:opacity-50"
+              className="rounded-lg bg-white/10 px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/20 disabled:opacity-50"
             >
               Log
             </button>
@@ -158,24 +244,24 @@ export function ContactPanel({ listing, onClose, onLogged }) {
         </div>
 
         <div>
-          <h3 className="font-semibold mb-2">Contact History</h3>
+          <h3 className="text-xl font-bold text-white mb-3">Contact History</h3>
           {loading ? (
-            <p className="text-sm text-gray-500">Loading...</p>
+            <p className="text-sm text-slate-400">Loading...</p>
           ) : history.length === 0 ? (
-            <p className="text-sm text-gray-500">No contact logged yet.</p>
+            <p className="text-sm text-slate-400">No contact logged yet.</p>
           ) : (
             <div className="space-y-2">
               {history.map((entry) => (
-                <div key={entry.id} className="border border-gray-200 rounded p-3 text-sm">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                <div key={entry.id} className="rounded-xl border border-white/10 p-3 text-sm">
+                  <div className="flex justify-between text-xs text-slate-400 mb-1">
                     <span>
                       {channelLabels[entry.channel] ?? entry.channel} ·{' '}
                       {entry.direction === 'Outbound' ? 'Sent by you' : 'Received'}
                     </span>
                     <span>{new Date(entry.createdAt).toLocaleString()}</span>
                   </div>
-                  {entry.subject && <p className="font-medium">{entry.subject}</p>}
-                  <p className="text-gray-700 whitespace-pre-wrap">{entry.message}</p>
+                  {entry.subject && <p className="font-medium text-white">{entry.subject}</p>}
+                  <p className="text-slate-300 whitespace-pre-wrap">{entry.message}</p>
                 </div>
               ))}
             </div>

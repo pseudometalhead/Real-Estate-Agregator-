@@ -17,8 +17,11 @@ public class GeocodingService
     private readonly ILogger<GeocodingService> _logger;
 
     // Keeps a single run's total geocoding time bounded and stays polite to
-    // a free public service shared by many other users.
-    private const int MaxLocationsPerRun = 25;
+    // a free public service shared by many other users. At 1 req/sec
+    // (DelayBetweenRequests below), 300 locations is ~5 minutes worst case —
+    // acceptable for a twice-daily background run or an on-demand backfill
+    // triggered via ScrapersController's geocode-now endpoint.
+    private const int MaxLocationsPerRun = 300;
     private static readonly TimeSpan DelayBetweenRequests = TimeSpan.FromMilliseconds(1100);
 
     public GeocodingService(HttpClient httpClient, ILogger<GeocodingService> logger)

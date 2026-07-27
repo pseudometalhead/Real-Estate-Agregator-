@@ -3,6 +3,7 @@ import { myListingsApi } from '../api/myListingsApi';
 import { ContactPanel } from '../components/ContactPanel';
 import { getPlatformMeta, getFaviconUrl } from '../utils/platformMeta';
 import { toCsv, downloadCsv } from '../utils/csv';
+import { ListRowSkeleton } from '../components/Skeleton';
 
 const csvColumns = [
   { header: 'Status', get: (l) => l.status },
@@ -65,6 +66,11 @@ export function MyListingsPage() {
       setListings((prev) =>
         prev.map((l) => (l.id === listing.id ? { ...l, status: newStatus } : l))
       );
+      // Re-marking Interested gets the same one-tap send moment as first
+      // adding a listing — see PropertyCard's post-add flow.
+      if (newStatus === 'Interested') {
+        setContactingListing({ ...listing, status: newStatus });
+      }
     } catch (err) {
       setError(err.message ?? 'Failed to update status');
     }
@@ -89,11 +95,11 @@ export function MyListingsPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">My Properties</h1>
+        <h1 className="text-3xl font-bold text-white">My Properties</h1>
         <button
           onClick={handleExportCsv}
           disabled={listings.length === 0}
-          className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm disabled:opacity-50"
+          className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/20 disabled:opacity-50"
         >
           ⬇ Export CSV
         </button>
@@ -102,7 +108,9 @@ export function MyListingsPage() {
       <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setStatusFilter(null)}
-          className={`px-4 py-2 rounded ${!statusFilter ? 'bg-blue-600 text-white' : 'bg-gray-300'}`}
+          className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+            !statusFilter ? 'bg-blue-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'
+          }`}
         >
           All
         </button>
@@ -110,8 +118,10 @@ export function MyListingsPage() {
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-4 py-2 rounded ${
-              statusFilter === status ? 'bg-blue-600 text-white' : 'bg-gray-300'
+            className={`rounded-lg px-4 py-2 font-medium transition-colors ${
+              statusFilter === status
+                ? 'bg-blue-500 text-white'
+                : 'bg-white/10 text-slate-300 hover:bg-white/20'
             }`}
           >
             {status}
@@ -119,12 +129,26 @@ export function MyListingsPage() {
         ))}
       </div>
 
-      {error && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded">{error}</div>}
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-600">Loading...</div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <ListRowSkeleton key={i} />
+          ))}
+        </div>
       ) : listings.length === 0 ? (
-        <div className="text-center py-12 text-gray-600">No listings found.</div>
+        <div className="py-16 text-center text-slate-400">
+          <p className="text-4xl mb-3">📋</p>
+          <p className="font-medium text-slate-300">No listings found</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Add properties from Browse to start tracking them here.
+          </p>
+        </div>
       ) : (
         <div className="space-y-4">
           {listings.map((listing) => {
@@ -133,7 +157,10 @@ export function MyListingsPage() {
             const photo = listing.property?.photos?.[0];
 
             return (
-              <div key={listing.id} className="bg-white rounded-lg shadow p-6 border border-gray-200">
+              <div
+                key={listing.id}
+                className="rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-sm hover:shadow-lg hover:border-white/10 transition-all p-6"
+              >
                 <div className="flex justify-between items-start mb-4 gap-4">
                   <div className="flex gap-4 flex-1 min-w-0">
                     {photo && (
@@ -142,27 +169,27 @@ export function MyListingsPage() {
                         alt=""
                         loading="lazy"
                         onError={(e) => (e.target.style.display = 'none')}
-                        className="w-20 h-20 rounded object-cover bg-gray-100 shrink-0"
+                        className="w-20 h-20 rounded-lg object-cover bg-white/10 shrink-0"
                       />
                     )}
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-lg">
+                        <h3 className="font-bold text-lg text-white">
                           €{listing.property?.price?.toLocaleString()}
                         </h3>
                         <span
-                          className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${platform.color}`}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${platform.color}`}
                         >
                           {faviconUrl && <img src={faviconUrl} alt="" width={12} height={12} />}
                           {platform.label}
                         </span>
                       </div>
-                      <p className="text-gray-600">{listing.property?.location}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-slate-400">{listing.property?.location}</p>
+                      <p className="text-sm text-slate-400">
                         Added: {new Date(listing.dateAdded).toLocaleDateString()}
                       </p>
                       {listing.commHistoryCount > 0 && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-slate-400">
                           {listing.commHistoryCount} contact
                           {listing.commHistoryCount === 1 ? '' : 's'} logged
                           {listing.lastContactedAt &&
@@ -174,10 +201,10 @@ export function MyListingsPage() {
                   <select
                     value={listing.status}
                     onChange={(e) => handleStatusChange(listing, e.target.value)}
-                    className="px-3 py-2 border rounded bg-white"
+                    className="rounded-lg border border-white/10 bg-white/10 px-3 py-2 text-sm text-slate-300 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
                     {statuses.map((status) => (
-                      <option key={status} value={status}>
+                      <option key={status} value={status} className="bg-slate-900">
                         {status}
                       </option>
                     ))}
@@ -185,21 +212,21 @@ export function MyListingsPage() {
                 </div>
 
                 {listing.notes && (
-                  <div className="mb-4 p-3 bg-gray-50 rounded">
-                    <p className="text-sm">
-                      <strong>Notes:</strong> {listing.notes}
+                  <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-sm text-slate-300">
+                      <strong className="text-white">Notes:</strong> {listing.notes}
                     </p>
                   </div>
                 )}
 
                 {listing.agentName && (
-                  <div className="text-sm text-gray-600 mb-4">
+                  <div className="text-sm text-slate-400 mb-4">
                     <p>
-                      <strong>Agent:</strong> {listing.agentName}
+                      <strong className="text-white">Agent:</strong> {listing.agentName}
                     </p>
                     {listing.agentPhone && (
                       <p>
-                        <strong>Phone:</strong> {listing.agentPhone}
+                        <strong className="text-white">Phone:</strong> {listing.agentPhone}
                       </p>
                     )}
                   </div>
@@ -210,19 +237,19 @@ export function MyListingsPage() {
                     href={listing.property?.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm"
+                    className="rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/20"
                   >
                     View on Site
                   </a>
                   <button
                     onClick={() => setContactingListing(listing)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                    className="rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-400"
                   >
                     Contact Agent
                   </button>
                   <button
                     onClick={() => handleDelete(listing.id)}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
+                    className="rounded-lg bg-red-500/100 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-400"
                   >
                     Delete
                   </button>

@@ -1,6 +1,9 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -36,25 +39,27 @@ export function Map({ properties = [] }) {
   const zoom = geocoded.length > 0 ? 11 : 7;
 
   return (
-    <div className="h-80 rounded-lg overflow-hidden border border-gray-200">
+    <div className="h-80 rounded-xl overflow-hidden border border-white/10 shadow-sm">
       <MapContainer key={`${center[0]},${center[1]}`} center={center} zoom={zoom} scrollWheelZoom={false} className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {geocoded.map((p) => (
-          <Marker key={p.id} position={[p.lat, p.lng]}>
-            <Popup>
-              <div className="text-sm">
-                <p className="font-semibold">€{p.price?.toLocaleString()}</p>
-                <p>{p.location}</p>
-                <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                  View listing
-                </a>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        <MarkerClusterGroup chunkedLoading maxClusterRadius={60}>
+          {geocoded.map((p) => (
+            <Marker key={p.id} position={[p.lat, p.lng]}>
+              <Popup>
+                <div className="text-sm">
+                  <p className="font-semibold">€{p.price?.toLocaleString()}</p>
+                  <p>{p.location}</p>
+                  <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
+                    View listing
+                  </a>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
       </MapContainer>
     </div>
   );

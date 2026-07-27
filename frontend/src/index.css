@@ -1,6 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* Dark, glassmorphic theme — no light mode toggle. Palette convention used
+   throughout the app:
+   - Page background: bg-slate-950 with the fixed gradient blobs below
+     (glass panels need something colorful behind them to actually diffuse).
+   - Glass panels/cards: bg-white/[0.06] backdrop-blur-xl border
+     border-white/10 shadow-xl rounded-2xl, hover:bg-white/[0.09].
+   - Text: text-white/text-slate-100 (primary), text-slate-400 (secondary),
+     text-slate-500 (muted).
+   - Accent: blue-500, hover blue-400 (bright enough to read on dark — the
+     old light theme's blue-600 goes muddy against slate-950).
+   - Semantic: emerald-400 on emerald-500/10 (success), red-400 on
+     red-500/10 (error/negative), amber-400 on amber-500/10 (warning) —
+     each with a matching /20 border.
+   - Inputs: bg-white/5 border-white/10, focus:border-blue-500
+     focus:ring-blue-500/40, text-slate-100, placeholder text-slate-500. */
+html {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
+  min-height: 100vh;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  background-color: #020617; /* slate-950 */
+  color: #f1f5f9; /* slate-100 */
+}
+
+/* Fixed, blurred gradient blobs behind everything — the actual visual
+   interest glass panels blur into. Fixed (not absolute) so they don't
+   scroll away or get clipped by any individual page's height. -z-10 keeps
+   them behind all real content without needing every page to set its own
+   stacking context. */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  background: #020617;
+}
+.app-backdrop::before,
+.app-backdrop::after {
+  content: '';
+  position: absolute;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.28;
+}
+.app-backdrop::before {
+  top: -20vmax;
+  left: -10vmax;
+  background: radial-gradient(circle, #3b82f6, transparent 70%); /* blue-500 */
+}
+.app-backdrop::after {
+  bottom: -25vmax;
+  right: -15vmax;
+  background: radial-gradient(circle, #8b5cf6, transparent 70%); /* violet-500 */
+}
+
+/* Leaflet's default light basemap/popup chrome doesn't have a dark variant
+   we can swap in without a paid tile provider, so only the popup/control
+   chrome around the map is restyled — see Map.jsx for the popup markup. */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #0f172a; /* slate-900 */
+  color: #f1f5f9;
+}
+.leaflet-container a.leaflet-popup-close-button {
+  color: #cbd5e1;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155; /* slate-700 */
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569; /* slate-600 */
 }

@@ -7,7 +7,22 @@ const defaultFilters = {
   priceMax: 999999,
   beds: null,
   orientation: null,
+  // Tri-state (true/false/null="Both") — see FilterSidebar's selects.
+  openPlanKitchen: null,
+  constructionStatus: null,
+  elevator: null,
+  parking: null,
+  pricePerM2Min: null,
+  pricePerM2Max: null,
+  addedWithinDays: null,
+  // Only properties with no MyListing at all — set via the Report page's
+  // "Review Now" click-through, not exposed in FilterSidebar itself yet.
+  // Name must match backend's FilterQueryDto.PendingActionOnly exactly
+  // (case-insensitively) for ASP.NET Core's query-string model binding to
+  // pick it up — there's no [FromQuery(Name=...)] alias on that property.
+  pendingActionOnly: null,
   location: '',
+  source: null,
   sortBy: 'date',
   sortDir: 'desc',
   page: 1,

@@ -28,12 +28,23 @@ public static class MappingExtensions
             Description = p.Description,
             SunOrientation = p.SunOrientation,
             OrientationSource = p.OrientationSource,
+            OpenPlanKitchen = p.OpenPlanKitchen,
+            ConstructionStatus = p.ConstructionStatus,
+            Elevator = p.Elevator,
+            Parking = p.Parking,
+            AgentName = p.AgentName,
+            AgentPhone = p.AgentPhone,
+            AgentEmail = p.AgentEmail,
             Photos = DeserializeStringList(p.PhotosJson),
             CreatedAt = p.CreatedAt,
             LastSeenAt = p.LastSeenAt,
             PreviousPrice = latest?.OldPrice,
             PriceChangedAt = latest?.ChangedAt,
-            PriceHistory = history
+            PriceHistory = history,
+            LinkedSources = p.LinkedSources
+                .OrderBy(s => s.Source)
+                .Select(s => new PropertySourceDto { Source = s.Source, Url = s.Url, Price = s.Price, LastSeenAt = s.LastSeenAt })
+                .ToList()
         };
     }
 
@@ -48,6 +59,7 @@ public static class MappingExtensions
         AgentPhone = l.AgentPhone,
         AgentEmail = l.AgentEmail,
         AskedAboutOrientation = l.AskedAboutOrientation,
+        AskedAboutOpenPlanKitchen = l.AskedAboutOpenPlanKitchen,
         FollowUpDate = l.FollowUpDate,
         DateAdded = l.DateAdded,
         LastUpdated = l.LastUpdated,
@@ -73,12 +85,15 @@ public static class MappingExtensions
         PriceMax = s.PriceMax,
         RoomsMin = s.RoomsMin,
         RoomsMax = s.RoomsMax,
+        MaxPagesPerSource = s.MaxPagesPerSource,
         ScrapeIdealistaEnabled = s.ScrapeIdealistaEnabled,
         ScrapeImoVirtualEnabled = s.ScrapeImoVirtualEnabled,
         ScrapeImobiliarioEnabled = s.ScrapeImobiliarioEnabled,
         ScrapeCasaSapoEnabled = s.ScrapeCasaSapoEnabled,
         ScrapeCaixaImobiliarioEnabled = s.ScrapeCaixaImobiliarioEnabled,
         ScrapeSantanderEnabled = s.ScrapeSantanderEnabled,
+        AvailabilityText = s.AvailabilityText,
+        SenderName = s.SenderName,
         LastScrapedAt = s.LastScrapedAt
     };
 
@@ -91,6 +106,7 @@ public static class MappingExtensions
         PropertiesFound = r.PropertiesFound,
         PropertiesAdded = r.PropertiesAdded,
         PropertiesUpdated = r.PropertiesUpdated,
+        PropertiesLinked = r.PropertiesLinked,
         PropertiesSkipped = r.PropertiesSkipped,
         HasErrors = r.HasErrors,
         Errors = DeserializeStringList(r.ErrorsJson),

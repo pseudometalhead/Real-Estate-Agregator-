@@ -26,7 +26,10 @@ public class MyListingsController : ControllerBase
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 20 : pageSize;
 
-        var query = _db.MyListings.Include(ml => ml.Property).Include(ml => ml.CommHistory).AsQueryable();
+        var query = _db.MyListings
+            .Include(ml => ml.Property).ThenInclude(p => p!.LinkedSources)
+            .Include(ml => ml.CommHistory)
+            .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(ml => ml.Status == status);
@@ -51,7 +54,7 @@ public class MyListingsController : ControllerBase
     public async Task<ActionResult<MyListingDto>> GetMyListing(int id)
     {
         var listing = await _db.MyListings
-            .Include(ml => ml.Property)
+            .Include(ml => ml.Property).ThenInclude(p => p!.LinkedSources)
             .Include(ml => ml.CommHistory)
             .FirstOrDefaultAsync(ml => ml.Id == id);
         if (listing == null)
@@ -71,14 +74,20 @@ public class MyListingsController : ControllerBase
         if (alreadyTracked)
             return Conflict("Property is already being tracked");
 
+        // Agent fields default to whatever the scraper already captured on the
+        // Property (see PropertyAgentContact migration) rather than starting
+        // blank — without this, every listing created via the swipe/❤️
+        // one-tap flow (which never sends agent info in the request body)
+        // would show no contact button at all despite the data already being
+        // on file. An explicit dto value (e.g. a manual correction) still wins.
         var listing = new MyListing
         {
             PropertyId = dto.PropertyId,
-            Status = "Interested",
+            Status = string.IsNullOrEmpty(dto.Status) ? "Interested" : dto.Status,
             Notes = dto.Notes,
-            AgentName = dto.AgentName,
-            AgentPhone = dto.AgentPhone,
-            AgentEmail = dto.AgentEmail,
+            AgentName = dto.AgentName ?? property.AgentName,
+            AgentPhone = dto.AgentPhone ?? property.AgentPhone,
+            AgentEmail = dto.AgentEmail ?? property.AgentEmail,
             DateAdded = DateTime.UtcNow,
             LastUpdated = DateTime.UtcNow
         };
@@ -103,6 +112,7 @@ public class MyListingsController : ControllerBase
         listing.AgentPhone = dto.AgentPhone;
         listing.AgentEmail = dto.AgentEmail;
         listing.AskedAboutOrientation = dto.AskedAboutOrientation ?? listing.AskedAboutOrientation;
+        listing.AskedAboutOpenPlanKitchen = dto.AskedAboutOpenPlanKitchen ?? listing.AskedAboutOpenPlanKitchen;
         listing.FollowUpDate = dto.FollowUpDate;
         listing.LastUpdated = DateTime.UtcNow;
 

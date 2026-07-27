@@ -30,7 +30,6 @@ public class CaixaImobiliarioScraper : IPropertyScraper
 
     public string Source => "CaixaImobiliario";
 
-    private const int MaxPages = 6;
     private const int PageSize = 8;
     private static readonly TimeSpan DelayBetweenRequests = TimeSpan.FromMilliseconds(1200);
 
@@ -72,7 +71,7 @@ public class CaixaImobiliarioScraper : IPropertyScraper
             .ToList();
         _hasMadeFirstRequest = false;
 
-        for (var page = 1; page <= MaxPages; page++)
+        for (var page = 1; page <= settings.MaxPagesPerSource; page++)
         {
             if (_hasMadeFirstRequest)
                 await Task.Delay(DelayBetweenRequests, cancellationToken);
@@ -132,6 +131,7 @@ public class CaixaImobiliarioScraper : IPropertyScraper
                 {
                     case DedupOutcome.Added: report.PropertiesAdded++; break;
                     case DedupOutcome.Updated: report.PropertiesUpdated++; break;
+                    case DedupOutcome.Linked: report.PropertiesLinked++; break;
                     case DedupOutcome.Skipped: report.PropertiesSkipped++; break;
                 }
             }
@@ -200,6 +200,10 @@ public class CaixaImobiliarioScraper : IPropertyScraper
 
         var description = typeText + (string.IsNullOrEmpty(typeText) ? "" : " — ") + fullText;
         var (orientation, orientationSource) = OrientationExtractor.Extract(description);
+        var openPlanKitchen = OpenPlanKitchenExtractor.Extract(description);
+        var constructionStatus = ConstructionStatusExtractor.Extract(description);
+        var elevator = ElevatorExtractor.Extract(description);
+        var parking = ParkingExtractor.Extract(description);
         var beds = ParseRooms(typeText);
 
         var photoUrl = node.SelectSingleNode("preceding-sibling::div[@class='mod_imovel'][1]//img")?.GetAttributeValue("src", string.Empty)
@@ -218,6 +222,10 @@ public class CaixaImobiliarioScraper : IPropertyScraper
             Description = description.Trim(),
             SunOrientation = orientation,
             OrientationSource = orientationSource,
+            OpenPlanKitchen = openPlanKitchen,
+            ConstructionStatus = constructionStatus,
+            Elevator = elevator,
+            Parking = parking,
             PhotosJson = JsonSerializer.Serialize(photoUrl != null ? new[] { photoUrl } : Array.Empty<string>()),
             SourcePropertyId = sourcePropertyId,
             DedupHash = DedupHashGenerator.Compute(location, price ?? 0, beds)

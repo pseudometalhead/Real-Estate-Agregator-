@@ -46,6 +46,50 @@ internal class ImoVirtualItem
     public ImoVirtualMoney? TotalPrice { get; set; }
     public ImoVirtualLocation? Location { get; set; }
     public List<ImoVirtualImage>? Images { get; set; }
+
+    // Free at search-result level, verified live — the private-seller name
+    // ("Susana Borges Barreto de Freitas") or, for agency listings, null
+    // here with Agency populated instead ("Terrace Benefit, Lda"). Neither
+    // carries a phone number at this level (advertOwner.contacts is always
+    // an empty array in search results) — that requires the per-listing
+    // detail page, see ImoVirtualScraper.FetchPhoneAsync.
+    public ImoVirtualAdvertOwner? AdvertOwner { get; set; }
+    public ImoVirtualAgency? Agency { get; set; }
+}
+
+internal class ImoVirtualAdvertOwner
+{
+    public string? Name { get; set; }
+}
+
+internal class ImoVirtualAgency
+{
+    public string? Name { get; set; }
+}
+
+// Minimal shape of the detail page's own __NEXT_DATA__ — fetched only for
+// genuinely new properties (see ImoVirtualScraper.ScrapeDistrictAsync) to
+// resolve the phone number, which isn't present anywhere in the search
+// response. Verified live: props.pageProps.unifiedAd.resolvedPhone is a
+// plain string, already in the site's own display format.
+internal class ImoVirtualDetailNextData
+{
+    public ImoVirtualDetailProps? Props { get; set; }
+}
+
+internal class ImoVirtualDetailProps
+{
+    public ImoVirtualDetailPageProps? PageProps { get; set; }
+}
+
+internal class ImoVirtualDetailPageProps
+{
+    public ImoVirtualUnifiedAd? UnifiedAd { get; set; }
+}
+
+internal class ImoVirtualUnifiedAd
+{
+    public string? ResolvedPhone { get; set; }
 }
 
 internal class ImoVirtualMoney

@@ -15,6 +15,7 @@ public class EstateDbContext : DbContext
     public DbSet<ScraperRun> ScraperRuns => Set<ScraperRun>();
     public DbSet<PriceHistoryEntry> PriceHistoryEntries => Set<PriceHistoryEntry>();
     public DbSet<CommHistoryEntry> CommHistoryEntries => Set<CommHistoryEntry>();
+    public DbSet<PropertySource> PropertySources => Set<PropertySource>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -76,6 +77,18 @@ public class EstateDbContext : DbContext
         {
             entity.Property(s => s.PriceMin).HasColumnType("decimal(10,2)");
             entity.Property(s => s.PriceMax).HasColumnType("decimal(10,2)");
+        });
+
+        modelBuilder.Entity<PropertySource>(entity =>
+        {
+            entity.HasIndex(s => s.PropertyId);
+            entity.HasIndex(s => s.Url);
+            entity.Property(s => s.Price).HasColumnType("decimal(10,2)");
+
+            entity.HasOne(s => s.Property)
+                .WithMany(p => p.LinkedSources)
+                .HasForeignKey(s => s.PropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

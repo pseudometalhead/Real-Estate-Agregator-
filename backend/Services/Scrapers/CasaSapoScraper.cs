@@ -38,8 +38,8 @@ public class CasaSapoScraper : IPropertyScraper
     // casa.sapo.pt's rate limiting turned out to trigger on total requests
     // in a short window, not just back-to-back spacing (5 quick Lisboa
     // pages left no budget for Porto's very first request even a full
-    // second later). Kept conservative: fewer pages, longer gaps.
-    private const int MaxPagesPerDistrict = 3;
+    // second later). Page count is user-controlled (AppSetting.MaxPagesPerSource);
+    // the delay below stays fixed regardless.
     private static readonly TimeSpan DelayBetweenRequests = TimeSpan.FromMilliseconds(2500);
 
     private static readonly Regex RoomsRegex = new(@"[Tt](\d+)", RegexOptions.Compiled);
@@ -100,7 +100,7 @@ public class CasaSapoScraper : IPropertyScraper
     {
         var slug = ResolveDistrictSlug(district);
 
-        for (var page = 1; page <= MaxPagesPerDistrict; page++)
+        for (var page = 1; page <= settings.MaxPagesPerSource; page++)
         {
             // Delay before every request except the very first of the whole
             // run — not just between pages within one district. Without
@@ -166,6 +166,7 @@ public class CasaSapoScraper : IPropertyScraper
                 {
                     case DedupOutcome.Added: report.PropertiesAdded++; break;
                     case DedupOutcome.Updated: report.PropertiesUpdated++; break;
+                    case DedupOutcome.Linked: report.PropertiesLinked++; break;
                     case DedupOutcome.Skipped: report.PropertiesSkipped++; break;
                 }
             }
@@ -213,7 +214,13 @@ public class CasaSapoScraper : IPropertyScraper
         var typeText = infoNode.SelectSingleNode(".//div[@class='property-type']")?.InnerText.Trim() ?? string.Empty;
         var locationText = HtmlEntity.DeEntitize(infoNode.SelectSingleNode(".//div[@class='property-location']")?.InnerText.Trim() ?? "Unknown");
         var featuresText = infoNode.SelectSingleNode(".//div[@class='property-features-text']")?.InnerText.Trim() ?? string.Empty;
-        var priceText = infoNode.SelectSingleNode(".//div[@class='property-price-value']")?.InnerText.Trim() ?? string.Empty;
+        // DeEntitize matters here, not just for display: undecoded, the raw
+        // text is literally "220.000 &#x20AC;" — the digit-only price parser
+        // below would pick up "20" from inside "&#x20AC;" too, inflating
+        // €220,000 into €22,000,020 and silently failing the PriceMax filter
+        // for every single listing (same class of bug SantanderScraper's
+        // ParsePrice comment already documents and avoids).
+        var priceText = HtmlEntity.DeEntitize(infoNode.SelectSingleNode(".//div[@class='property-price-value']")?.InnerText.Trim() ?? string.Empty);
         var description = HtmlEntity.DeEntitize(descNode?.InnerText.Trim() ?? string.Empty);
 
         var beds = ParseRooms(typeText);
@@ -222,6 +229,10 @@ public class CasaSapoScraper : IPropertyScraper
         var photoUrl = ExtractPhotoUrl(mediaNode);
 
         var (orientation, orientationSource) = OrientationExtractor.Extract(description);
+        var openPlanKitchen = OpenPlanKitchenExtractor.Extract(description);
+        var constructionStatus = ConstructionStatusExtractor.Extract(description);
+        var elevator = ElevatorExtractor.Extract(description);
+        var parking = ParkingExtractor.Extract(description);
 
         return new Property
         {
@@ -235,6 +246,10 @@ public class CasaSapoScraper : IPropertyScraper
             Description = description,
             SunOrientation = orientation,
             OrientationSource = orientationSource,
+            OpenPlanKitchen = openPlanKitchen,
+            ConstructionStatus = constructionStatus,
+            Elevator = elevator,
+            Parking = parking,
             PhotosJson = JsonSerializer.Serialize(photoUrl != null ? new[] { photoUrl } : Array.Empty<string>()),
             SourcePropertyId = mediaNode?.GetAttributeValue("data-uid", string.Empty),
             DedupHash = DedupHashGenerator.Compute(locationText, price ?? 0, beds)
@@ -246,9 +261,19 @@ public class CasaSapoScraper : IPropertyScraper
         if (string.IsNullOrEmpty(trackingHref))
             return null;
 
-        var match = TrackingUrlRegex.Match(trackingHref);
+        // HtmlAgilityPack's GetAttributeValue does NOT decode HTML entities
+        // in attribute values — the raw href is literally
+        // "...counter.aspx?c=1&amp;p=...&amp;l=https://casa.sapo.pt/...",
+        // so TrackingUrlRegex's "[?&]l=" never matched "&amp;l=" and this
+        // silently fell back to storing the ugly gespub.casa.sapo.pt
+        // tracking-counter link as the property's Url instead of the real
+        // listing page. Caught by inspecting a real stored URL — every
+        // CasaSapo row had this same tracking link, not just some.
+        var decodedHref = HtmlEntity.DeEntitize(trackingHref) ?? trackingHref;
+
+        var match = TrackingUrlRegex.Match(decodedHref);
         if (!match.Success)
-            return trackingHref.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? trackingHref : null;
+            return decodedHref.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? decodedHref : null;
 
         return Uri.UnescapeDataString(match.Groups[1].Value);
     }
