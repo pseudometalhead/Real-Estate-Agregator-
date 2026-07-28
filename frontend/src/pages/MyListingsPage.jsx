@@ -161,7 +161,7 @@ export function MyListingsPage() {
                 key={listing.id}
                 className="rounded-xl border border-white/10 bg-white/[0.06] backdrop-blur-xl shadow-sm hover:shadow-lg hover:border-white/10 transition-all p-6"
               >
-                <div className="flex justify-between items-start mb-4 gap-4">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-4">
                   <div className="flex gap-4 flex-1 min-w-0">
                     {photo && (
                       <img

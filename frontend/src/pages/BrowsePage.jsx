@@ -27,6 +27,7 @@ export function BrowsePage() {
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
   const [showMap, setShowMap] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [mapProperties, setMapProperties] = useState([]);
   const [mapLoading, setMapLoading] = useState(false);
   const pageSize = 12;
@@ -85,7 +86,9 @@ export function BrowsePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
       <div className="flex gap-6">
-        <FilterSidebar />
+        <div className="hidden sm:block">
+          <FilterSidebar />
+        </div>
         <div className="flex-1 min-w-0">
           <div className="mb-6 flex items-end justify-between flex-wrap gap-4">
             <div>
@@ -95,6 +98,12 @@ export function BrowsePage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFilters(true)}
+                className="sm:hidden rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-medium text-slate-300 backdrop-blur-xl transition-colors hover:bg-white/10"
+              >
+                ⚙️ Filters
+              </button>
               <select
                 value={sortValueFor(filters)}
                 onChange={(e) => handleSortChange(e.target.value)}
@@ -184,6 +193,26 @@ export function BrowsePage() {
           )}
         </div>
       </div>
+
+      {showFilters && (
+        <div
+          className="sm:hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto"
+          onClick={() => setShowFilters(false)}
+        >
+          <div className="mt-6 mb-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setShowFilters(false)}
+                aria-label="Close filters"
+                className="text-slate-300 hover:text-white text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <FilterSidebar />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

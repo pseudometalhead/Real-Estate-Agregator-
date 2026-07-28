@@ -91,8 +91,17 @@ public class CaixaImobiliarioScraper : IPropertyScraper
 
             var priceMin = settings.PriceMin > 0 ? ((int)settings.PriceMin).ToString(CultureInfo.InvariantCulture) : "-1";
             var priceMax = settings.PriceMax > 0 ? ((int)settings.PriceMax).ToString(CultureInfo.InvariantCulture) : "0";
+            // The site's real pagination is JS-driven (a "Seguinte"/next
+            // link that calls changePAGE(total, pageSize, targetPage,
+            // offset, ...) against a form, not a plain GET) — verified live
+            // that "pgnr" alone is silently ignored for a bare GET request;
+            // every page number returned byte-identical results without
+            // "ofs" (the record offset, pageSize * (page-1)) also present.
+            // Without it, this scraper only ever saw page 1, no matter how
+            // many pages it "paged" through.
+            var offset = (page - 1) * PageSize;
             var url = "https://www.caixaimobiliario.pt/comprar/imoveis-venda.jsp" +
-                      $"?pcmin={priceMin}&pcmax={priceMax}&pgnr={page}&pgsz={PageSize}&listing=resumo&ordby=data_entrada";
+                      $"?pcmin={priceMin}&pcmax={priceMax}&pgnr={page}&ofs={offset}&pgsz={PageSize}&listing=resumo&ordby=data_entrada";
 
             string html;
             try
@@ -119,9 +128,10 @@ public class CaixaImobiliarioScraper : IPropertyScraper
             }
 
             List<Property> candidates;
+            int rawListingCount;
             try
             {
-                candidates = ParseListings(html, normalizedDistricts);
+                (candidates, rawListingCount) = ParseListings(html, normalizedDistricts);
             }
             catch (Exception ex)
             {
@@ -131,7 +141,18 @@ public class CaixaImobiliarioScraper : IPropertyScraper
                 break;
             }
 
-            if (candidates.Count == 0)
+            // The site has no server-side district filter (see class comment)
+            // — every page is nationwide results ordered by date, filtered to
+            // Porto in code. A page with zero Porto MATCHES does not mean
+            // pagination is exhausted (verified live: page 1 of a fresh
+            // "newest first" run had listings from Setúbal, Beja, Aveiro,
+            // Madeira, Coimbra, Lisboa, Castelo Branco, and Portalegre —
+            // zero from Porto, purely by chance of what was newly listed).
+            // Stopping here would silently report "0 found" and never look
+            // at page 2 onward, even though Porto listings are still further
+            // in. Only stop once the SITE itself has no more listings at all
+            // (rawListingCount == 0).
+            if (rawListingCount == 0)
                 break;
 
             report.PropertiesFound += candidates.Count;
@@ -155,14 +176,14 @@ public class CaixaImobiliarioScraper : IPropertyScraper
         return report;
     }
 
-    private List<Property> ParseListings(string html, List<string> normalizedDistricts)
+    private (List<Property> Candidates, int RawCount) ParseListings(string html, List<string> normalizedDistricts)
     {
         var doc = new HtmlDocument();
         doc.LoadHtml(html);
 
         var infoNodes = doc.DocumentNode.SelectNodes("//div[@class='result_imovel_txt']");
         if (infoNodes == null || infoNodes.Count == 0)
-            return new List<Property>();
+            return (new List<Property>(), 0);
 
         var results = new List<Property>();
 
@@ -173,7 +194,7 @@ public class CaixaImobiliarioScraper : IPropertyScraper
                 results.Add(property);
         }
 
-        return results;
+        return (results, infoNodes.Count);
     }
 
     private Property? ParseOne(HtmlNode node, List<string> normalizedDistricts)
