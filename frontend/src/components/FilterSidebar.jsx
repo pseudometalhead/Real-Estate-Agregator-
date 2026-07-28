@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { FilterContext } from '../context/FilterContext';
 
 const districts = ['All', 'Lisboa', 'Porto', 'Cascais', 'Braga', 'Coimbra', 'Faro', 'Aveiro'];
-const sources = ['All', 'ImoVirtual', 'CasaSapo', 'CaixaImobiliario', 'Santander', 'CustoJusto'];
+const sources = ['All', 'Idealista', 'ImoVirtual', 'CasaSapo', 'CaixaImobiliario', 'Santander', 'CustoJusto'];
 const constructionStatuses = ['All', 'Em Construção', 'Nova Construção', 'Concluída', 'Para Recuperar', 'Not Available'];
 const addedWithinOptions = [
   { label: 'Any time', value: null },
