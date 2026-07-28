@@ -300,17 +300,33 @@ public class CasaSapoScraper : IPropertyScraper
         return Uri.UnescapeDataString(match.Groups[1].Value);
     }
 
+    // The site lazy-loads photos below the first few cards on the page:
+    // those <source> elements carry "data-srcset" instead of "srcset" (the
+    // real "srcset" attribute is left absent until JS populates it on
+    // scroll), and the sibling <img> src is a 1x1 base64 placeholder GIF
+    // with the real URL sitting in "data-src" instead. Verified live: on a
+    // 26-listing casa.sapo.pt search page, only the first 4 cards had a
+    // real "srcset" — this scraper only ever checked that attribute, so the
+    // other ~85% of listings silently got an empty PhotosJson despite every
+    // one of them having a real photo in the page's own HTML.
     private static string? ExtractPhotoUrl(HtmlNode? mediaNode)
     {
         var source = mediaNode?.SelectSingleNode(".//source");
         var srcset = source?.GetAttributeValue("srcset", string.Empty);
         if (string.IsNullOrEmpty(srcset))
-            return null;
+            srcset = source?.GetAttributeValue("data-srcset", string.Empty);
 
-        // srcset is a comma-separated "url 1x, url 2x, url 4x" list; take the first URL.
-        var firstEntry = srcset.Split(',')[0].Trim();
-        var url = firstEntry.Split(' ')[0];
-        return string.IsNullOrEmpty(url) ? null : url;
+        if (!string.IsNullOrEmpty(srcset))
+        {
+            // srcset is a comma-separated "url 1x, url 2x, url 4x" list; take the first URL.
+            var firstEntry = srcset.Split(',')[0].Trim();
+            var url = firstEntry.Split(' ')[0];
+            if (!string.IsNullOrEmpty(url))
+                return url;
+        }
+
+        var dataSrc = mediaNode?.SelectSingleNode(".//img")?.GetAttributeValue("data-src", string.Empty);
+        return string.IsNullOrEmpty(dataSrc) ? null : dataSrc;
     }
 
     private static int? ParseRooms(string typeText)
