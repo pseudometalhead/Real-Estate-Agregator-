@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { commHistoryApi } from '../api/commHistoryApi';
 import { myListingsApi } from '../api/myListingsApi';
 import { appSettingsApi } from '../api/appSettingsApi';
-import { draftInquiry, buildMailtoLink, buildWhatsAppLink } from '../utils/messageTemplates';
+import { draftInquiry, buildMailtoLink, buildWhatsAppLink, buildTelLink, isPortugueseMobileNumber } from '../utils/messageTemplates';
 
 const channelLabels = {
   WhatsApp: '💚 WhatsApp',
@@ -116,6 +116,8 @@ export function ContactPanel({ listing, onClose, onLogged }) {
   // the same way as Email/Phone: the user confirms afterward via "I've sent
   // this — log it", not automatically on click.
   const handleOpenWhatsApp = () => setClickedChannel('WhatsApp');
+  const handleCall = () => setClickedChannel('Phone');
+  const phoneIsMobile = isPortugueseMobileNumber(listing.agentPhone);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -172,7 +174,7 @@ export function ContactPanel({ listing, onClose, onLogged }) {
           </div>
 
           <div className="flex gap-2 flex-wrap">
-            {listing.agentPhone && (
+            {listing.agentPhone && phoneIsMobile && (
               <a
                 href={buildWhatsAppLink(listing.agentPhone, body)}
                 target="_blank"
@@ -182,6 +184,16 @@ export function ContactPanel({ listing, onClose, onLogged }) {
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
               >
                 💚 Open in WhatsApp
+              </a>
+            )}
+            {listing.agentPhone && !phoneIsMobile && (
+              <a
+                href={buildTelLink(listing.agentPhone)}
+                onClick={handleCall}
+                title="This is a landline number — it can't have a WhatsApp account, so call it instead."
+                className="rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/20"
+              >
+                📞 Call {listing.agentPhone}
               </a>
             )}
             {listing.agentEmail && (
@@ -202,7 +214,12 @@ export function ContactPanel({ listing, onClose, onLogged }) {
             <button
               onClick={() =>
                 logEntry(
-                  clickedChannel ?? (listing.agentPhone ? 'WhatsApp' : listing.agentEmail ? 'Email' : 'Phone'),
+                  clickedChannel ??
+                    (listing.agentPhone && phoneIsMobile
+                      ? 'WhatsApp'
+                      : listing.agentEmail
+                        ? 'Email'
+                        : 'Phone'),
                   'Outbound',
                   body,
                   subject

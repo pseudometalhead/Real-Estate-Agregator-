@@ -90,3 +90,23 @@ export function buildWhatsAppLink(phone, body) {
   const params = new URLSearchParams({ text: body });
   return `https://wa.me/${e164Digits}?${params.toString()}`;
 }
+
+// Portuguese mobile numbers are always 9 digits starting with "9"; landline
+// (geographic) numbers start with "2" (21 Lisboa, 22 Porto, etc.) — verified
+// live: a real agent landline like "22 327 9548" produces a wa.me link that
+// WhatsApp itself rejects with "isn't on WhatsApp", since a landline can
+// never have a WhatsApp account, on any client. Used to hide the "Open in
+// WhatsApp" button for numbers that could never work rather than let the
+// user hit that dead end.
+export function isPortugueseMobileNumber(phone) {
+  if (!phone) return false;
+  const digits = phone.replace(/[^\d]/g, '');
+  const local = digits.startsWith('351') ? digits.slice(3) : digits;
+  return /^9\d{8}$/.test(local);
+}
+
+export function buildTelLink(phone) {
+  const digits = phone.replace(/[^\d+]/g, '');
+  const e164Digits = digits.startsWith('+') ? digits : `+351${digits}`;
+  return `tel:${e164Digits}`;
+}
