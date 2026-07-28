@@ -209,7 +209,7 @@ export function BrowsePage() {
                 ×
               </button>
             </div>
-            <FilterSidebar />
+            <FilterSidebar onApply={() => setShowFilters(false)} />
           </div>
         </div>
       )}

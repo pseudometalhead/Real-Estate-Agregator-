@@ -270,7 +270,7 @@ export function SwipePage() {
                 ×
               </button>
             </div>
-            <FilterSidebar />
+            <FilterSidebar onApply={() => setShowFilters(false)} />
           </div>
         </div>
       )}

@@ -24,7 +24,11 @@ function selectToTriState(value) {
   return null;
 }
 
-export function FilterSidebar() {
+// onApply is optional — callers that show this inside a toggleable modal
+// (SwipePage, BrowsePage on mobile) pass it to close the modal once the
+// filters are actually applied; a caller rendering it as an always-visible
+// sidebar has nothing to close and can omit it.
+export function FilterSidebar({ onApply } = {}) {
   const { filters, setFilters } = useContext(FilterContext);
   const [localFilters, setLocalFilters] = useState(filters);
 
@@ -34,6 +38,7 @@ export function FilterSidebar() {
 
   const handleApplyFilters = () => {
     setFilters(localFilters);
+    onApply?.();
   };
 
   return (
