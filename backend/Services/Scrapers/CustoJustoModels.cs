@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace EstateAggregator.Services.Scrapers;
 
 // Minimal shape of custojusto.pt's embedded Next.js __NEXT_DATA__ JSON blob —
@@ -98,6 +100,27 @@ internal class CustoJustoAdData
     public string? Body { get; set; }
     public CustoJustoAdLocation? Location { get; set; }
     public CustoJustoAdParams? Params { get; set; }
+
+    // The full photo gallery — the search-results page only ever carries
+    // ImageFullURL (a single cover photo), verified live that a real
+    // listing's own detail page had 13 here versus that same 1. "deleted"
+    // is misleadingly named: every entry on a real, currently-live listing
+    // has deleted=true, including the exact photo already confirmed
+    // working as ImageFullURL — it is not a "this image is gone" flag and
+    // must not be used to filter the list.
+    public List<CustoJustoExtraImage>? ExtraImages { get; set; }
+}
+
+internal class CustoJustoExtraImage
+{
+    // Template URL with a literal "{rule}" placeholder — verified live that
+    // substituting "gallery" (the same path segment ImageFullURL already
+    // uses) produces a working image URL for every entry. snake_case in the
+    // raw JSON ("yams_oid"), unlike every other field on this page —
+    // PropertyNameCaseInsensitive alone doesn't bridge that, hence the
+    // explicit attribute.
+    [JsonPropertyName("yams_oid")]
+    public string? YamsOid { get; set; }
 }
 
 internal class CustoJustoAdLocation

@@ -68,6 +68,28 @@ internal class IdealistaPhone
     public string? PhoneNumber { get; set; }
 }
 
+// Response shape for GET /v1/property/{ad_id} — the per-listing detail
+// endpoint. Verified live: the search endpoint's own "multimedia.images"
+// (when present at all) is truncated to a single entry regardless of the
+// listing's real photo count ("numPhotos" on the search result can say 13
+// while multimedia.images.length is 1) — this detail endpoint is the only
+// way to get the full gallery. Only the fields this scraper actually uses
+// are declared here.
+internal class IdealistaPropertyDetailResponse
+{
+    public IdealistaMultimedia? Multimedia { get; set; }
+}
+
+internal class IdealistaMultimedia
+{
+    public List<IdealistaImage> Images { get; set; } = new();
+}
+
+internal class IdealistaImage
+{
+    public string? Url { get; set; }
+}
+
 internal class IdealistaLocationsResponse
 {
     public List<IdealistaLocationNode> Locations { get; set; } = new();

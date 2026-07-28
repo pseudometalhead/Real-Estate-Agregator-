@@ -197,7 +197,7 @@ public class ImobiliarioScraper : IPropertyScraper
             var pageUrls = saleItems.Select(i => ResolveUrl(i.Url, i.ListID)).ToList();
             var existingByUrl = await _db.Properties
                 .Where(p => pageUrls.Contains(p.Url))
-                .Select(p => new { p.Url, p.Description, p.Lat, p.Lng, p.EnergyRating })
+                .Select(p => new { p.Url, p.Description, p.Lat, p.Lng, p.EnergyRating, p.PhotosJson })
                 .ToDictionaryAsync(p => p.Url, cancellationToken);
 
             foreach (var item in saleItems)
@@ -222,9 +222,20 @@ public class ImobiliarioScraper : IPropertyScraper
                 // has a full description and exact coordinates, later
                 // re-scrapes skip the extra request entirely.
                 existingByUrl.TryGetValue(property.Url, out var existing);
+                var existingPhotoCount = string.IsNullOrEmpty(existing?.PhotosJson)
+                    ? 0
+                    : JsonSerializer.Deserialize<string[]>(existing.PhotosJson)?.Length ?? 0;
                 var needsDetail = existing == null
                     || existing.Lat == null
-                    || (existing.Description?.Length ?? 0) < ShortDescriptionThreshold;
+                    || (existing.Description?.Length ?? 0) < ShortDescriptionThreshold
+                    // The search-results page only ever carries a single
+                    // cover photo (ImageFullURL) — the detail page's own
+                    // extraImages has the full gallery (verified live: 13
+                    // photos there vs. 1 from search). Re-fetch until a
+                    // listing has more than the one guaranteed photo, same
+                    // "keep trying until we've actually gained something"
+                    // reasoning as the lat/lon and description checks above.
+                    || existingPhotoCount <= 1;
 
                 CustoJustoDetailResult? detail = null;
                 if (needsDetail)
@@ -260,6 +271,14 @@ public class ImobiliarioScraper : IPropertyScraper
                 property.EnergyRating = !string.IsNullOrEmpty(detail?.EnergyRating)
                     ? detail!.EnergyRating
                     : existing?.EnergyRating ?? property.EnergyRating;
+
+                // Same precedence as above: a freshly-fetched gallery beats
+                // whatever's already stored, which beats this run's own
+                // search-preview candidate (just the one ImageFullURL).
+                if (detail?.Photos is { Count: > 0 })
+                    property.PhotosJson = JsonSerializer.Serialize(detail.Photos);
+                else if (existingPhotoCount > 0)
+                    property.PhotosJson = existing!.PhotosJson;
 
                 var outcome = await _dedupService.ProcessAsync(_db, property);
                 switch (outcome)
@@ -307,13 +326,13 @@ public class ImobiliarioScraper : IPropertyScraper
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("CustoJusto detail page returned {Status} for {Url}", response.StatusCode, url);
-                return new CustoJustoDetailResult(null, null, null, null);
+                return new CustoJustoDetailResult(null, null, null, null, new List<string>());
             }
 
             var html = await response.Content.ReadAsStringAsync(cancellationToken);
             var match = NextDataRegex.Match(html);
             if (!match.Success)
-                return new CustoJustoDetailResult(null, null, null, null);
+                return new CustoJustoDetailResult(null, null, null, null, new List<string>());
 
             var data = JsonSerializer.Deserialize<CustoJustoDetailNextData>(match.Groups[1].Value, JsonOptions);
             var adData = data?.Props?.PageProps?.AdData;
@@ -321,20 +340,29 @@ public class ImobiliarioScraper : IPropertyScraper
                 ? null
                 : HtmlEntity.DeEntitize(adData.Body);
 
+            // "{rule}" is a literal placeholder in the raw JSON — verified
+            // live that substituting "gallery" (the same path segment
+            // ImageFullURL already uses) produces a working image URL.
+            var photos = adData?.ExtraImages?
+                .Where(i => !string.IsNullOrEmpty(i.YamsOid))
+                .Select(i => i.YamsOid!.Replace("{rule}", "gallery"))
+                .ToList() ?? new List<string>();
+
             return new CustoJustoDetailResult(
                 description,
                 adData?.Location?.Lat,
                 adData?.Location?.Lon,
-                adData?.Params?.EnergyRating?.Name);
+                adData?.Params?.EnergyRating?.Name,
+                photos);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "CustoJusto detail lookup failed for {Url}", url);
-            return new CustoJustoDetailResult(null, null, null, null);
+            return new CustoJustoDetailResult(null, null, null, null, new List<string>());
         }
     }
 
-    private record CustoJustoDetailResult(string? Description, double? Lat, double? Lon, string? EnergyRating);
+    private record CustoJustoDetailResult(string? Description, double? Lat, double? Lon, string? EnergyRating, List<string> Photos);
 
     private Property MapToProperty(CustoJustoListItem item, string fallbackDistrict)
     {

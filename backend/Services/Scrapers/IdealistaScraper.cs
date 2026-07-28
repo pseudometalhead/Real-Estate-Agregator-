@@ -51,6 +51,14 @@ public class IdealistaScraper : IPropertyScraper
     // observed, and raise it once pricing/limits are known (see the plan doc).
     private const int PageSize = 40; // upstream cap, per the OpenAPI spec
 
+    // The search endpoint's own multimedia is truncated to 1 photo no
+    // matter how many actually exist (see IdealistaPropertyDetailResponse's
+    // comment) — GET /v1/property/{ad_id} is the only way to get the full
+    // gallery, at the cost of one extra API call per listing. A small delay
+    // keeps this from bursting RapidAPI's rate limit the way back-to-back
+    // requests for every listing on a 40-item page otherwise would.
+    private static readonly TimeSpan DelayBetweenDetailRequests = TimeSpan.FromMilliseconds(250);
+
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public IdealistaScraper(HttpClient httpClient, EstateDbContext db, DeduplicationService dedupService, ILogger<IdealistaScraper> logger)
@@ -214,6 +222,11 @@ public class IdealistaScraper : IPropertyScraper
                 if (property.Beds.HasValue && (property.Beds < settings.RoomsMin || property.Beds > settings.RoomsMax))
                     continue;
 
+                await Task.Delay(DelayBetweenDetailRequests, cancellationToken);
+                var fullGallery = await FetchAllPhotosAsync(item.PropertyCode, apiKey, cancellationToken);
+                if (fullGallery.Count > 0)
+                    property.PhotosJson = JsonSerializer.Serialize(fullGallery);
+
                 var outcome = await _dedupService.ProcessAsync(_db, property);
                 switch (outcome)
                 {
@@ -229,6 +242,38 @@ public class IdealistaScraper : IPropertyScraper
             var totalPages = data?.TotalPages ?? page;
             if (page >= totalPages)
                 return;
+        }
+    }
+
+    // Falls back to an empty list (caller keeps the single search-result
+    // thumbnail already on the candidate) rather than failing the whole
+    // listing on a transient detail-endpoint error — losing the extra
+    // gallery photos for one listing isn't worth aborting a page's worth of
+    // otherwise-good results over.
+    private async Task<List<string>> FetchAllPhotosAsync(string propertyCode, string apiKey, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var url = $"{ApiBaseUrl}/v1/property/{propertyCode}?country=pt&locale=pt";
+            var response = await SendAsync(url, apiKey, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("Idealista property detail for {PropertyCode} returned {Status}", propertyCode, response.StatusCode);
+                return new List<string>();
+            }
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
+            var data = JsonSerializer.Deserialize<IdealistaPropertyDetailResponse>(json, JsonOptions);
+            return data?.Multimedia?.Images
+                .Select(i => i.Url)
+                .Where(u => !string.IsNullOrEmpty(u))
+                .Select(u => u!)
+                .ToList() ?? new List<string>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Idealista property detail fetch failed for {PropertyCode}", propertyCode);
+            return new List<string>();
         }
     }
 

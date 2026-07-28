@@ -103,6 +103,36 @@ public class CasaSapoScraperTests : IDisposable
         Assert.Contains("https://media.casasapo.pt/eager-photo.jpg.webp", photos);
     }
 
+    // Each listing's media block is a swiper carousel with one photo per
+    // ".swiper-slide" — verified live: a real search-results page had 4-5
+    // distinct photos per listing this way, all free (already in the one
+    // page fetch this scraper makes). The scraper used to only ever look at
+    // the first <source> found anywhere in the whole media div, so every
+    // listing got capped at 1 photo even when several were already on the
+    // page.
+    [Fact]
+    public async Task ScrapeAsync_MultipleSwiperSlides_CapturesEveryPhoto()
+    {
+        var photoMarkup =
+            "<div class='property-media-swiper swiper-container'><div class='swiper-wrapper'>" +
+            "<div class='swiper-slide'><picture><source srcset='https://media.casasapo.pt/slide-1.jpg.webp 1x' /></picture></div>" +
+            "<div class='swiper-slide'><picture><source data-srcset='https://media.casasapo.pt/slide-2.jpg.webp 1x' /></picture></div>" +
+            "<div class='swiper-slide'><picture><source data-srcset='https://media.casasapo.pt/slide-3.jpg.webp 1x' /></picture></div>" +
+            "</div></div>";
+        var html = CardHtml("multi-1", photoMarkup);
+        var httpClient = new HttpClient(new SinglePageHandler(html));
+        var scraper = new CasaSapoScraper(httpClient, _db, new DeduplicationService(), NullLogger<CasaSapoScraper>.Instance);
+
+        await scraper.ScrapeAsync(MakeSettings());
+
+        var saved = await _db.Properties.FirstAsync();
+        var photos = JsonSerializer.Deserialize<string[]>(saved.PhotosJson)!;
+        Assert.Equal(3, photos.Length);
+        Assert.Contains("https://media.casasapo.pt/slide-1.jpg.webp", photos);
+        Assert.Contains("https://media.casasapo.pt/slide-2.jpg.webp", photos);
+        Assert.Contains("https://media.casasapo.pt/slide-3.jpg.webp", photos);
+    }
+
     [Fact]
     public async Task ScrapeAsync_NoSrcsetAtAll_FallsBackToImgDataSrc()
     {
